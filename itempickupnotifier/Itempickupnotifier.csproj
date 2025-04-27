@@ -20,12 +20,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="modicon.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="protobuf-net" Version="2.4.7" />
   </ItemGroup>
 
