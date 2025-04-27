@@ -1,11 +1,11 @@
 {
     "type": "code",
     "modid": "itempickupnotifier",
-    "name": "itempickupnotifier",
+    "name": "Item Pickup Notifier",
     "authors": [
-        "Unknown"
+        "tacf"
     ],
-    "description": "To be added",
+    "description": "Small hud overlay that shows pickup items",
     "version": "1.0.0",
     "dependencies": {
         "game": ""
