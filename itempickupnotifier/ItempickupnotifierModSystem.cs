@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using itempickupnotifier.GUI;
+using ItemPickupNotifier.Config;
+using ItemPickupNotifier.GUI;
 using ProtoBuf;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 
-namespace itempickupnotifier
+namespace ItemPickupNotifier
 {
 
     [ProtoContract]
@@ -29,7 +30,8 @@ namespace itempickupnotifier
 
     public class ItempickupnotifierModSystem : ModSystem
     {
-        public static NotifierOverlay notifierOverlay;
+        public static NotifierOverlay NotifierOverlay;
+        public static ItemPickupNotifierConfig Config { get; private set; } = new ItemPickupNotifierConfig();
         HashSet<string> activeReceivers = new HashSet<string>();
 
         private ICoreAPI api;
@@ -45,7 +47,6 @@ namespace itempickupnotifier
                 .RegisterChannel("itempickupnotifier")
                 .RegisterMessageType<ItemStackReceivedPacket>()
                 .RegisterMessageType<RequestItemStackNotifyPacket>();
-
         }
 
 
@@ -68,7 +69,10 @@ namespace itempickupnotifier
             // Wait 200ms to ensure the channel is connected and request server to register player for notifications
             capi.Event.RegisterGameTickListener(onClientTick200ms, 200);
 
-            notifierOverlay = new NotifierOverlay(capi);
+            Config = capi.LoadModConfig<ItemPickupNotifierConfig>(ItemPickupNotifierConfig.FileName) ?? new ItemPickupNotifierConfig();
+            capi.StoreModConfig(Config, ItemPickupNotifierConfig.FileName);
+
+            NotifierOverlay = new NotifierOverlay(capi);
         }
 
 
@@ -94,8 +98,8 @@ namespace itempickupnotifier
             itemstack.ResolveBlockOrItem(api.World);
             if (itemstack == null) return;
 
-            notifierOverlay.AddItemStack(itemstack);
-            notifierOverlay.ShowNotification();
+            NotifierOverlay.AddItemStack(itemstack);
+            NotifierOverlay.ShowNotification();
         }
 
 

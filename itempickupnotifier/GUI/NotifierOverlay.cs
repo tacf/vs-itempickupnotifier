@@ -2,8 +2,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 
-namespace itempickupnotifier.GUI
+namespace ItemPickupNotifier.GUI
 {
 
     public class NotifierOverlay : HudElement
@@ -11,10 +12,13 @@ namespace itempickupnotifier.GUI
         private double showDuration = 4.0; // Duration in seconds to show notification
         private long showUntilMs;
         private List<ItemStack> itemStacks = new List<ItemStack>();
+        private CairoFont font;
+        private readonly Vec4f colour = new(0.91f, 0.87f, 0.81f, 1);
 
 
         public NotifierOverlay(ICoreClientAPI capi) : base(capi)
         {
+            font = InitFont();
             BuildDialog();
         }
 
@@ -46,11 +50,11 @@ namespace itempickupnotifier.GUI
              * ELementBounds are essentially a parented 2D rectangle which are used to determine the positions of UI elements.
              * In this case, we're using an autosized dialog that is centered in the center middle of the screen.
              */
-            ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog.WithAlignment(EnumDialogArea.RightBottom);
+            ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog.WithAlignment(ItempickupnotifierModSystem.Config.GetOverlayAnchor()).WithFixedOffset(ItempickupnotifierModSystem.Config.HorizontalOffset, ItempickupnotifierModSystem.Config.VerticalOffset);
 
             // Create a container for all item stack texts
             ElementBounds containerBounds = ElementBounds.Fixed(0, 0, 300, 300).WithFixedPadding(GuiStyle.ElementToDialogPadding).WithAlignment(EnumDialogArea.LeftBottom);
-            
+
             // Background boundaries
             ElementBounds bgBounds = ElementBounds.Fill
                 .WithFixedPadding(GuiStyle.ElementToDialogPadding)
@@ -66,10 +70,10 @@ namespace itempickupnotifier.GUI
             foreach (var itemStack in itemStacks)
             {
                 ElementBounds textItemStackBounds = ElementBounds.Fixed(0, yOffset, 300, 50);
-                guiComposer.AddStaticText(itemStack.StackSize + "x " + itemStack.GetName(), CairoFont.WhiteSmallText(), textItemStackBounds);
+                guiComposer.AddStaticText(itemStack.StackSize + "x " + itemStack.GetName(), font, textItemStackBounds);
                 yOffset -= ElementBounds.scaled(20); // Move down by the height of each text element
             }
-            
+
             guiComposer.EndChildElements();
             SingleComposer = guiComposer.Compose();
         }
@@ -92,6 +96,18 @@ namespace itempickupnotifier.GUI
             // Rebuild Dialog and Show
             BuildDialog();
             ShowNotification();
+        }
+
+        protected virtual CairoFont InitFont()
+        {
+            const bool bold = true;
+
+            return new CairoFont()
+                .WithColor(new double[] { colour.R, colour.G, colour.B, colour.A })
+                .WithFont(GuiStyle.StandardFontName)
+                .WithFontSize(ItempickupnotifierModSystem.Config.FontSize)
+                .WithWeight(bold ? Cairo.FontWeight.Bold : Cairo.FontWeight.Normal)
+                .WithStroke(new double[] { 0, 0, 0, 0.5 }, 2);
         }
     }
 }
