@@ -17,8 +17,8 @@
             },
             "preLaunchTask": "build",
             "args": [
-                "--playStyle" , "preset-creative",
-                "--openWorld" , "itempickup notifier test world",
+                "--playStyle" , "preset-surviveandbuild",
+                "--openWorld" , "Dev Survival Mod",
                 "--tracelog",
                 "--addModPath",
                 "${workspaceFolder}/itempickupnotifier/bin/Debug/Mods",

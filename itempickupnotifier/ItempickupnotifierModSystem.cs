@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using ItemPickupNotifier.Config;
 using ItemPickupNotifier.GUI;
 using ProtoBuf;
@@ -117,6 +118,8 @@ namespace ItemPickupNotifier
 
             if (activeReceivers.Contains(plr.PlayerUID))
             {
+                //itemstack.ResolveBlockOrItem(sapi.World);
+                //Console.WriteLine("Server: " + itemstack.Block.FirstTextureInventory.Base);
                 sapi.Network.GetChannel("itempickupnotifier").SendPacket(new ItemStackReceivedPacket()
                 {
                     eventname = eventName,
