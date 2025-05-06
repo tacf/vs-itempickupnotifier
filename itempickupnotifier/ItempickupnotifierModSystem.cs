@@ -1,122 +1,110 @@
 ﻿using System.Collections.Generic;
-using HarmonyLib;
 using ItemPickupNotifier.Config;
 using ItemPickupNotifier.GUI;
-using ProtoBuf;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Datastructures;
-using Vintagestory.API.Server;
-
+using Vintagestory.API.Util;
 namespace ItemPickupNotifier
 {
-
-    [ProtoContract]
-    public class ItemStackReceivedPacket
-    {
-        [ProtoMember(1)]
-        public string eventname;
-        [ProtoMember(2)]
-        public byte[] stackbytes;
-    }
-
-    [ProtoContract]
-    public class RequestItemStackNotifyPacket
-    {
-        [ProtoMember(1)]
-        public string code;
-    }
-
 
     public class ItempickupnotifierModSystem : ModSystem
     {
         public static NotifierOverlay NotifierOverlay;
-        public static ItemPickupNotifierConfig Config { get; private set; } = new ItemPickupNotifierConfig();
-        private static readonly HashSet<string> activeReceivers = new HashSet<string>();
+        public static ItemPickupNotifierConfig Config { get; private set; } = new();
 
-        private ICoreAPI api;
-        private static ICoreServerAPI sapi;
         private ICoreClientAPI capi;
-        public Harmony harmony;
-
-
-        public override void Start(ICoreAPI api)
-        {
-            this.api = api;
-            base.Start(api);
-            if (!Harmony.HasAnyPatches(Mod.Info.ModID))
-            {
-                harmony = new Harmony(Mod.Info.ModID);
-                harmony.PatchAll(); // Applies all harmony patches
-            }
-            api.Network
-                .RegisterChannel("itempickupnotifier")
-                .RegisterMessageType<ItemStackReceivedPacket>()
-                .RegisterMessageType<RequestItemStackNotifyPacket>();
-        }
-
-
-        public override void StartServerSide(ICoreServerAPI api)
-        {
-            sapi = api;
-            base.StartServerSide(sapi);
-            sapi.Network.GetChannel("itempickupnotifier").SetMessageHandler<RequestItemStackNotifyPacket>(onItemStackNotifyRequest);
-        }
-
+        private IClientPlayer player;
+        private readonly Dictionary<string, ItemStack[]> cachedInventories = new();
+        private long playerAwaitListenerId;
 
         public override void StartClientSide(ICoreClientAPI api)
         {
             capi = api;
             base.StartClientSide(capi);
 
-            capi.Network.GetChannel("itempickupnotifier").SetMessageHandler<ItemStackReceivedPacket>(onItemStackReceived);
+            capi.Event.LeftWorld += OnClientLeave;
+            playerAwaitListenerId = capi.Event.RegisterGameTickListener(CheckPlayerReady, 200);
 
-            // Wait 200ms to ensure the channel is connected and request server to register player for notifications
-            capi.Event.RegisterGameTickListener(onClientTick200ms, 200);
-
-            Config = capi.LoadModConfig<ItemPickupNotifierConfig>(ItemPickupNotifierConfig.FileName) ?? new ItemPickupNotifierConfig();
+            Config = capi.LoadModConfig<ItemPickupNotifierConfig>(ItemPickupNotifierConfig.FileName) ?? new();
             capi.StoreModConfig(Config, ItemPickupNotifierConfig.FileName);
 
-            NotifierOverlay = new NotifierOverlay(capi);
+            NotifierOverlay = new(capi);
         }
 
-
-        private void onClientTick200ms(float dt)
+        private void CheckPlayerReady(float dt)
         {
-            capi.Network.GetChannel("itempickupnotifier").SendPacket(new RequestItemStackNotifyPacket()
+            if (capi.PlayerReadyFired)
             {
-                code = "request"
-            });
+                capi.Logger.Debug("Player is ready - Caching Inventories");
+                player = capi.World.Player;
+                foreach (var (invKey, inv) in player.InventoryManager.Inventories)
+                {
+                    if (!IsValidInventoryType(inv)) continue;
+
+                    inv.SlotModified += slotId => SlotModified(invKey, slotId);
+                    cachedInventories[invKey] = CopyInventorySlots((InventoryBase)inv);
+                }
+                capi.Logger.Debug("Unregistering Player Await Listener");
+                capi.Event.UnregisterGameTickListener(playerAwaitListenerId);
+            }
         }
 
-
-        private void onItemStackNotifyRequest(IServerPlayer byPlayer, RequestItemStackNotifyPacket packet)
+        private void OnClientLeave()
         {
-            activeReceivers.Add(byPlayer.PlayerUID);
+            cachedInventories.RemoveAll((_, _) => true);
+            this.player = null;
         }
 
-
-        private void onItemStackReceived(ItemStackReceivedPacket packet)
+        private void SlotModified(string invKey, int slotId)
         {
-            //Console.WriteLine($"[{Mod.Info.ModID}] Received ItemStack: " + packet.eventname);
-            var itemstack = new ItemStack(packet.stackbytes);
-            itemstack.ResolveBlockOrItem(api.World);
-            if (itemstack == null) return;
+            var inv = (InventoryBase)player.InventoryManager.Inventories[invKey];
+            var cachedInvStacks = cachedInventories[invKey];
+            if (cachedInvStacks == null || cachedInvStacks.Length != inv.Count)
+            {
+                // Refresh cached inventories -> mainly happens dues to changes in equipped bags
+                cachedInventories[invKey] = CopyInventorySlots(inv);
+                return;
+            }
 
-            NotifierOverlay.AddItemStack(itemstack);
+            var currentItemStack = cachedInvStacks[slotId];
+            var newItemStack = inv[slotId].Itemstack;
+
+            var currentStackSize = currentItemStack?.StackSize ?? 0;
+            var newStackSize = newItemStack?.StackSize ?? 0;
+
+            if (currentStackSize < newStackSize)
+            {
+                NotifyItemPickup(newItemStack, currentStackSize);
+            }
+
+            cachedInventories[invKey][slotId] = newItemStack?.Clone();
+        }
+
+        private static void NotifyItemPickup(ItemStack newStack, int currentSize)
+        {
+            var notifyStack = newStack.Clone();
+            notifyStack.StackSize -= currentSize;
+            NotifierOverlay.AddItemStack(notifyStack);
             NotifierOverlay.ShowNotification();
         }
 
-        public static void NotifyPlayerItemStackReceived(IServerPlayer plr, ItemStack itemStack)
+        private static ItemStack[] CopyInventorySlots(InventoryBase inv)
         {
-            if (activeReceivers.Contains(plr.PlayerUID))
+            var copiedStacks = new ItemStack[inv.Count];
+            for (int i = 0; i < inv.Count; i++)
             {
-                sapi.Network.GetChannel("itempickupnotifier").SendPacket(new ItemStackReceivedPacket()
+                if (inv[i].Itemstack != null)
                 {
-                    eventname = "onitemcollected", 
-                    stackbytes = itemStack.ToBytes()
-                }, plr);
+                    copiedStacks[i] = inv[i].Itemstack.Clone();
+                }
             }
+            return copiedStacks;
+        }
+
+        private static bool IsValidInventoryType(IInventory inv)
+        {
+            var typeName = inv.GetType().Name;
+            return typeName is "InventoryPlayerHotbar" or "InventoryPlayerBackPacks";
         }
     }
 }

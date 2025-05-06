@@ -88,7 +88,7 @@ namespace ItemPickupNotifier.GUI
 
         public void AddItemStack(ItemStack itemStack)
         {
-            var index = itemStacks.FindIndex(i => i.GetName() == itemStack.GetName());
+            var index = itemStacks.FindIndex(i => i.Id == itemStack.Id);
             if (index >= 0)
             {
                 // Refresh current value and push it to the top of the list
