@@ -1,6 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
+using HarmonyLib;
 using ItemPickupNotifier.Config;
 using ItemPickupNotifier.GUI;
 using ProtoBuf;
@@ -33,17 +32,23 @@ namespace ItemPickupNotifier
     {
         public static NotifierOverlay NotifierOverlay;
         public static ItemPickupNotifierConfig Config { get; private set; } = new ItemPickupNotifierConfig();
-        HashSet<string> activeReceivers = new HashSet<string>();
+        private static readonly HashSet<string> activeReceivers = new HashSet<string>();
 
         private ICoreAPI api;
-        private ICoreServerAPI sapi;
+        private static ICoreServerAPI sapi;
         private ICoreClientAPI capi;
+        public Harmony harmony;
 
 
         public override void Start(ICoreAPI api)
         {
             this.api = api;
             base.Start(api);
+            if (!Harmony.HasAnyPatches(Mod.Info.ModID))
+            {
+                harmony = new Harmony(Mod.Info.ModID);
+                harmony.PatchAll(); // Applies all harmony patches
+            }
             api.Network
                 .RegisterChannel("itempickupnotifier")
                 .RegisterMessageType<ItemStackReceivedPacket>()
@@ -56,7 +61,6 @@ namespace ItemPickupNotifier
             sapi = api;
             base.StartServerSide(sapi);
             sapi.Network.GetChannel("itempickupnotifier").SetMessageHandler<RequestItemStackNotifyPacket>(onItemStackNotifyRequest);
-            sapi.Event.RegisterEventBusListener(onCollectedItem);
         }
 
 
@@ -103,28 +107,15 @@ namespace ItemPickupNotifier
             NotifierOverlay.ShowNotification();
         }
 
-
-        private void onCollectedItem(string eventName, ref EnumHandling handling, IAttribute data)
+        public static void NotifyPlayerItemStackReceived(IServerPlayer plr, ItemStack itemStack)
         {
-            if (eventName != "onitemcollected") return;
-
-            var tree = data as TreeAttribute;
-            var itemstack = tree.GetItemstack("itemstack");
-            var entityId = tree.GetLong("byentityid");
-            var plr = (sapi.World.GetEntityById(entityId) as EntityPlayer)?.Player;
-
-            if (plr == null) return;
-
-
             if (activeReceivers.Contains(plr.PlayerUID))
             {
-                //itemstack.ResolveBlockOrItem(sapi.World);
-                //Console.WriteLine("Server: " + itemstack.Block.FirstTextureInventory.Base);
                 sapi.Network.GetChannel("itempickupnotifier").SendPacket(new ItemStackReceivedPacket()
                 {
-                    eventname = eventName,
-                    stackbytes = itemstack.ToBytes()
-                }, plr as IServerPlayer);
+                    eventname = "onitemcollected", 
+                    stackbytes = itemStack.ToBytes()
+                }, plr);
             }
         }
     }

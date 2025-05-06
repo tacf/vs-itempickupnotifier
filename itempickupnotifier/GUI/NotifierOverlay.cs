@@ -1,12 +1,8 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using Cairo;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
 
 namespace ItemPickupNotifier.GUI
 {
@@ -48,7 +44,6 @@ namespace ItemPickupNotifier.GUI
             }
         }
 
-
         private void BuildDialog()
         {
             if (!itemStacks.Any()) return;
@@ -62,7 +57,7 @@ namespace ItemPickupNotifier.GUI
                 .WithFixedPadding(ElementBounds.scaled(5));
 
             // Background boundaries
-            ElementBounds bgBounds = ElementBounds.Fixed(0,  0, 350, itemEntrySize*itemStacks.Count);
+            ElementBounds bgBounds = ElementBounds.Fixed(0, 0, 350, itemEntrySize * itemStacks.Count);
 
             var guiComposer = capi.Gui.CreateCompo("itemPickupNotifier", dialogBounds)
                 .AddGameOverlay(bgBounds, new double[] { 0.0, 0.0, 0.0, 0.0 })
@@ -72,13 +67,13 @@ namespace ItemPickupNotifier.GUI
             double yOffset = itemEntrySize*(itemStacks.Count-1);
             
             foreach (var itemStack in itemStacks)
-            {            
+            {
                 if (itemStack.ResolveBlockOrItem(capi.World))
                 {
                     CompositeTexture texture = itemStack.Item != null ? itemStack.Item.FirstTexture : itemStack.Block.FirstTextureInventory;
                     if (texture != null)
                     {
-                        ElementBounds textItemStackBounds = ElementBounds.Fixed(0,  yOffset, 350, 0);
+                        ElementBounds textItemStackBounds = ElementBounds.Fixed(0, yOffset, 350, 0);
                         var isComp = new ItemstackTextComponent(capi, itemStack, 35, 0, EnumFloat.Right);
                         isComp.offY -= 10;
                         guiComposer.AddRichtext(new RichTextComponentBase[] { isComp, new RichTextComponent(capi, itemStack.StackSize + "x " + itemStack.GetName(), font) }, textItemStackBounds);
