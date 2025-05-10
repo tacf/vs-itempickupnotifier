@@ -15,6 +15,7 @@ namespace ItemPickupNotifier
         private ICoreClientAPI capi;
         private IClientPlayer player;
         private readonly Dictionary<string, ItemStack[]> cachedInventories = new();
+        private ItemStack _lastItemStackRemoved;
         private long playerAwaitListenerId;
 
         public override void StartClientSide(ICoreClientAPI api)
@@ -52,7 +53,8 @@ namespace ItemPickupNotifier
         private void OnClientLeave()
         {
             cachedInventories.RemoveAll((_, _) => true);
-            this.player = null;
+            _lastItemStackRemoved = null;
+            player = null;
         }
 
         private void SlotModified(string invKey, int slotId)
@@ -72,12 +74,21 @@ namespace ItemPickupNotifier
             var currentStackSize = currentItemStack?.StackSize ?? 0;
             var newStackSize = newItemStack?.StackSize ?? 0;
 
-            var isMoveOperation = currentItemStack != null && newItemStack != null && currentItemStack?.Id != newItemStack?.Id;
-            if (currentStackSize < newStackSize && !isMoveOperation)
+            var slotFilled = (newItemStack != null) && (currentItemStack == null);
+            var slotEmptied = !slotFilled;
+            var slotChange = newItemStack != null && currentItemStack != null;
+            var slotNoOp = !slotChange && newStackSize == 0 && currentStackSize == 0;
+            var slotChangedAmmount = slotChange && newItemStack.Id == currentItemStack.Id && newStackSize != currentStackSize;
+            var slotChangedItemType = slotChange && (currentItemStack?.Id != newItemStack?.Id);
+            var isStackSwap = slotChange && slotChangedItemType;
+            var isLastRemovedItem = (slotFilled || slotChangedAmmount || slotChangedItemType) && _lastItemStackRemoved != null && _lastItemStackRemoved.Id == newItemStack.Id && _lastItemStackRemoved.StackSize == newStackSize;
+            if (currentStackSize < newStackSize && !isStackSwap && !isLastRemovedItem)
             {
                 NotifyItemPickup(newItemStack, currentStackSize);
+                _lastItemStackRemoved = null;
             }
 
+            if (!isLastRemovedItem || slotEmptied || !slotNoOp) _lastItemStackRemoved = currentItemStack?.Clone();
             cachedInventories[invKey][slotId] = newItemStack?.Clone();
         }
 
