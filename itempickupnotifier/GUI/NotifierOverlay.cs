@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -49,6 +50,7 @@ namespace ItemPickupNotifier.GUI
             if (!itemStacks.Any()) return;
 
             double itemEntrySize = ElementBounds.scaled(30);
+            double overlayWidth = ElementBounds.scaled(500);
 
             // Dialog base bound
             ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog
@@ -57,7 +59,7 @@ namespace ItemPickupNotifier.GUI
                 .WithFixedPadding(ElementBounds.scaled(5));
 
             // Background boundaries
-            ElementBounds bgBounds = ElementBounds.Fixed(0, 0, 350, itemEntrySize * itemStacks.Count);
+            ElementBounds bgBounds = ElementBounds.Fixed(0, 0, overlayWidth, itemEntrySize * itemStacks.Count);
 
             var guiComposer = capi.Gui.CreateCompo("itemPickupNotifier", dialogBounds)
                 .AddGameOverlay(bgBounds, new double[] { 0.0, 0.0, 0.0, 0.0 })
@@ -73,10 +75,10 @@ namespace ItemPickupNotifier.GUI
                     CompositeTexture texture = itemStack.Item != null ? itemStack.Item.FirstTexture : itemStack.Block.FirstTextureInventory;
                     if (texture != null)
                     {
-                        ElementBounds textItemStackBounds = ElementBounds.Fixed(0, yOffset, 350, 0);
+                        ElementBounds textItemStackBounds = ElementBounds.Fixed(0, yOffset, overlayWidth, itemEntrySize);
                         var isComp = new ItemstackTextComponent(capi, itemStack, 35, 0, EnumFloat.Right);
                         isComp.offY -= 10;
-                        guiComposer.AddRichtext(new RichTextComponentBase[] { isComp, new RichTextComponent(capi, itemStack.StackSize + "x " + itemStack.GetName(), font) }, textItemStackBounds);
+                        guiComposer.AddRichtext(new RichTextComponentBase[] { isComp, new RichTextComponent(capi, Regex.Replace(itemStack.StackSize + "x " + itemStack.GetName(), "<.*?>", string.Empty), font) }, textItemStackBounds);
                         yOffset -= itemEntrySize;
                     }
                 }

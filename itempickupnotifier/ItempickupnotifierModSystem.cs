@@ -73,6 +73,8 @@ namespace ItemPickupNotifier
             var newStackSize = newItemStack?.StackSize ?? 0;
 
             if (currentStackSize < newStackSize)
+            var isMoveOperation = currentItemStack != null && newItemStack != null && currentItemStack?.Id != newItemStack?.Id;
+            if (currentStackSize < newStackSize && !isMoveOperation)
             {
                 NotifyItemPickup(newItemStack, currentStackSize);
             }
