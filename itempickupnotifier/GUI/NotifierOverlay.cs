@@ -20,7 +20,7 @@ namespace ItemPickupNotifier.GUI
         public NotifierOverlay(ICoreClientAPI capi) : base(capi)
         {
             font = InitFont();
-            BuildDialog();
+            SetupDialog();
         }
 
         public void ShowNotification()
@@ -29,7 +29,7 @@ namespace ItemPickupNotifier.GUI
 
             if (!IsOpened())
             {
-                BuildDialog();
+                SetupDialog();
                 TryOpen(withFocus: false);
             }
         }
@@ -45,7 +45,7 @@ namespace ItemPickupNotifier.GUI
             }
         }
 
-        private void BuildDialog()
+        private void SetupDialog()
         {
             if (!itemStacks.Any()) return;
 
@@ -106,7 +106,7 @@ namespace ItemPickupNotifier.GUI
             // If it's already opened, rebuild the dialog
             if (IsOpened())
             {
-                BuildDialog();
+                SetupDialog();
             }
         }
 

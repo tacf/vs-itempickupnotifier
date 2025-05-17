@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using ItemPickupNotifier.Config;
 using ItemPickupNotifier.GUI;
 using Vintagestory.API.Client;
@@ -9,7 +10,8 @@ namespace ItemPickupNotifier
 
     public class ItempickupnotifierModSystem : ModSystem
     {
-        public static NotifierOverlay NotifierOverlay;
+        private static NotifierOverlay NotifierOverlay;
+        private static SettingsUI GuiSettings;
         public static ItemPickupNotifierConfig Config { get; private set; } = new();
 
         private ICoreClientAPI capi;
@@ -30,6 +32,65 @@ namespace ItemPickupNotifier
             capi.StoreModConfig(Config, ItemPickupNotifierConfig.FileName);
 
             NotifierOverlay = new(capi);
+            GuiSettings = CreateSettingsUI();
+            GuiSettings.Build();
+            RegisterHotKeys();
+        }
+
+        private SettingsUI CreateSettingsUI()
+        {
+            SettingsUI ui = new("itempickupnotifier", capi);
+
+            ui.Section("font").AddCheckbox("bold", OnBoldToggled);
+            ui.Section("position")
+                .AddSlider("xoffset", OnSliderNewValue)
+                .AddSlider("yoffset", OnSliderNewValue)
+                .AddDropdown("pos", OnSelectionChanged, Enum.GetNames(typeof(EnumDialogArea)), defaultName: EnumDialogArea.LeftBottom.ToString());
+            ui.Section("dev")
+                .AddCheckbox("overlay-background", OnDevBackgroundToggled)
+                .AddCheckbox("preview-mode", OnDevPreviewToggled);
+
+            return ui;
+        }
+
+        private void OnDevPreviewToggled(bool obj)
+        {
+            return;
+        }
+
+        private void OnDevBackgroundToggled(bool obj)
+        {
+            return;
+        }
+
+        private void OnSelectionChanged(string code, bool selected)
+        {
+            return;
+        }
+
+        private bool OnSliderNewValue(int t1)
+        {
+            return true;
+        }
+
+        private void OnBoldToggled(bool obj)
+        {
+            return;
+        }
+
+
+        private void RegisterHotKeys()
+        {
+            capi.Input.RegisterHotKey("itempickupnotifier:config", "Item Pickup Notifier Config", GlKeys.Z, type: HotkeyType.GUIOrOtherControls, ctrlPressed: true);
+            capi.Input.SetHotKeyHandler("itempickupnotifier:config", OnConfigChanged);
+        }
+
+        private bool OnConfigChanged(KeyCombination keyCombination)
+        {
+            if (GuiSettings.IsOpened()) GuiSettings.TryClose();
+            else GuiSettings.TryOpen();
+        
+            return true;
         }
 
         private void CheckPlayerReady(float dt)
