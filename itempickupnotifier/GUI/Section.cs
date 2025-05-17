@@ -9,14 +9,14 @@ namespace ItemPickupNotifier.GUI
 
     public class Section : GuiElementContainer
     {
-        private const string modName = "itempickupnotifier";
         public double Width => _baseBounds.fixedWidth;
 
         // Internal reference to title in language files
-        private string _titleLangKey;
+        private readonly string _titleLangKey;
+        private readonly string _settingsUIId;
         public string Title
         {
-            get => Lang.Get(modName + ":section." + _titleLangKey + ".title");
+            get => GetLangString("title");
         }
 
 
@@ -33,19 +33,20 @@ namespace ItemPickupNotifier.GUI
 
 
 
-        public Section(string titleLangKey, ICoreClientAPI capi, ElementBounds bounds) : base(capi, bounds)
+        public Section(string settingsId, string titleLangKey, ICoreClientAPI capi, ElementBounds bounds) : base(capi, bounds)
         {
             _titleLangKey = titleLangKey;
-            _baseBounds = bounds.FlatCopy();
+            _settingsUIId = settingsId;
+            _baseBounds = bounds;
             _api = capi;
             _container = new GuiElementContainer(_api, _baseBounds);
             GenerateTitle();
         }
 
-        public static ElementBounds GetBaseBounds(double width)
+        public static ElementBounds GetBaseBounds(double width, double yOffset = 0)
         {
             return ElementBounds
-                    .FixedOffseted(EnumDialogArea.CenterTop, 0, 0, ElementBounds.scaled(width * 0.9), _elementHeight)
+                    .FixedOffseted(EnumDialogArea.CenterTop, 0, yOffset, ElementBounds.scaled(width * 0.9), _elementHeight + _elementPadding)
                     .WithFixedPadding(ElementBounds.scaled(5));
         }
 
@@ -57,7 +58,6 @@ namespace ItemPickupNotifier.GUI
             var titleBounds = ElementBounds.Fixed(0, 0, Width, _elementHeight);
             var titleElement = new GuiElementStaticText(_api, Title, EnumTextOrientation.Left, titleBounds, font);
             _container.Add(titleElement);
-            _baseBounds.fixedHeight = _elementHeight;
         }
 
 
@@ -76,10 +76,11 @@ namespace ItemPickupNotifier.GUI
             return this;
         }
 
-        public Section AddSlider(string descriptionLangKey, ActionConsumable<int> onNewSliderValue)
+        public Section AddSlider(string descriptionLangKey, ActionConsumable<int> onNewSliderValue, int defaultValue = 0)
         {
             UpdateNextChildBounds();
             var sliderElement = new GuiElementSlider(_api, onNewSliderValue, _settingElementBounds);
+            sliderElement.SetValue(defaultValue);
             _container.Add(GenerateSettingLabel(descriptionLangKey));
             _container.Add(sliderElement);
             return this;
@@ -106,15 +107,16 @@ namespace ItemPickupNotifier.GUI
         private void UpdateNextChildBounds()
         {
             _currentYOffset += _elementHeight + _elementPadding;
-            var descLeftPadding = ElementBounds.scaled(Width*0.05);
+            var descLeftPadding = ElementBounds.scaled(Width * 0.05);
             _settingDescriptionBounds = ElementBounds.Fixed(descLeftPadding, _currentYOffset, Width / 2 - descLeftPadding, _elementHeight);
             _settingElementBounds = ElementBounds.Fixed(Width / 2, _currentYOffset, Width / 2, _elementHeight);
             _baseBounds.fixedHeight += _elementHeight + _elementPadding;
+            api.Logger.Debug("fixedY: {0}, fixedHeight: {1}", _baseBounds.fixedY, _baseBounds.fixedHeight);
         }
 
         private string GetLangString(string key)
         {
-            return UITils.GetLangString(modName, "section." + _titleLangKey + "." + key);
+            return UITils.GetLangString(_settingsUIId, "section." + _titleLangKey + "." + key);
         }
     }
 }

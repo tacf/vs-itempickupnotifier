@@ -15,6 +15,8 @@ namespace ItemPickupNotifier.GUI
         private List<ItemStack> itemStacks = new List<ItemStack>();
         private CairoFont font;
         private readonly Vec4f colour = new(0.91f, 0.87f, 0.81f, 1);
+        private bool _debugBackgroundVisible = false;
+        private bool _debugModeEnabled = false;
 
 
         public NotifierOverlay(ICoreClientAPI capi) : base(capi)
@@ -40,7 +42,7 @@ namespace ItemPickupNotifier.GUI
 
             if (IsOpened() && capi.World.ElapsedMilliseconds > showUntilMs)
             {
-                TryClose();
+                if (!_debugModeEnabled) TryClose();
                 itemStacks.Clear();
             }
         }
@@ -61,13 +63,16 @@ namespace ItemPickupNotifier.GUI
             // Background boundaries
             ElementBounds bgBounds = ElementBounds.Fixed(0, 0, overlayWidth, itemEntrySize * itemStacks.Count);
 
+            var bgColor = new double[] { 0.0, 0.0, 0.0, 0.0 };
+            if (_debugBackgroundVisible) bgColor[3] = 0.8;
+
             var guiComposer = capi.Gui.CreateCompo("itemPickupNotifier", dialogBounds)
-                .AddGameOverlay(bgBounds, new double[] { 0.0, 0.0, 0.0, 0.0 })
+                .AddGameOverlay(bgBounds, bgColor)
                 .BeginChildElements();
 
             // Create stacked text elements
-            double yOffset = itemEntrySize*(itemStacks.Count-1);
-            
+            double yOffset = itemEntrySize * (itemStacks.Count - 1);
+
             foreach (var itemStack in itemStacks)
             {
                 if (itemStack.ResolveBlockOrItem(capi.World))
@@ -124,5 +129,32 @@ namespace ItemPickupNotifier.GUI
                 .WithWeight(bold ? Cairo.FontWeight.Bold : Cairo.FontWeight.Normal)
                 .WithStroke(new double[] { 0, 0, 0, 0.5 }, 2);
         }
+
+        public bool IsDebugMode()
+        {
+            return _debugModeEnabled;
+        }
+        public void Debug(bool enabled)
+        {
+            _debugModeEnabled = enabled;
+
+            SetupDialog();
+            if (!IsOpened() && _debugModeEnabled)
+            {
+                TryOpen();
+            }
+        }
+
+        public void BackgroundVisible(bool visible)
+        {
+            _debugBackgroundVisible = visible;
+            
+            SetupDialog();
+            if (!IsOpened() && _debugModeEnabled)
+            {
+                TryOpen();
+            }
+        }
+
     }
 }
