@@ -78,7 +78,9 @@ namespace ItemPickupNotifier.GUI
                         ElementBounds textItemStackBounds = ElementBounds.Fixed(0, yOffset, overlayWidth, itemEntrySize);
                         var isComp = new ItemstackTextComponent(capi, itemStack, 35, 0, EnumFloat.Right);
                         isComp.offY -= 10;
-                        guiComposer.AddRichtext(new RichTextComponentBase[] { isComp, new RichTextComponent(capi, Regex.Replace(itemStack.StackSize + "x " + itemStack.GetName(), "<.*?>", string.Empty), font) }, textItemStackBounds);
+                        string totalCount = "";
+                        if (ItempickupnotifierModSystem.Config.TotalAmountEnabled) totalCount = " (" + ItempickupnotifierModSystem.GetTotalItemCountInInventories(itemStack.Id) +")";
+                        guiComposer.AddRichtext(new RichTextComponentBase[] { isComp, new RichTextComponent(capi, Regex.Replace(itemStack.StackSize + "x " + itemStack.GetName() + totalCount, "<.*?>", string.Empty), font) }, textItemStackBounds);
                         yOffset -= itemEntrySize;
                     }
                 }

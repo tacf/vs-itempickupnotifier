@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using Vintagestory.API.Client;
-using Vintagestory.API.Common;
 
 namespace ItemPickupNotifier.Config
 {
@@ -10,7 +9,6 @@ namespace ItemPickupNotifier.Config
     /// </summary>
     public class ItemPickupNotifierConfig
     {
-        #region Overlay Position
 
         private EnumDialogArea anchor = EnumDialogArea.RightBottom;
         public const string FileName = "itempickupnotifier.json";
@@ -28,12 +26,12 @@ namespace ItemPickupNotifier.Config
         /// <summary>Vertical Offset (in pixels)</summary>
         public float VerticalOffset { get; set; } = 0.0f;
 
-
         public float FontSize { get; set; } = 16.0f;
 
-        #endregion
+        public bool TotalAmountEnabled = false;
 
-        public EnumDialogArea GetOverlayAnchor() {
+        public EnumDialogArea GetOverlayAnchor()
+        {
             return anchor;
         }
 
@@ -52,6 +50,7 @@ namespace ItemPickupNotifier.Config
                 HorizontalOffset = loaded.HorizontalOffset;
                 VerticalOffset = loaded.VerticalOffset;
                 FontSize = loaded.FontSize;
+                TotalAmountEnabled = loaded.TotalAmountEnabled;
             }
         }
 
@@ -62,6 +61,7 @@ namespace ItemPickupNotifier.Config
             HorizontalOffset = defaults.HorizontalOffset;
             VerticalOffset = defaults.VerticalOffset;
             FontSize = defaults.FontSize;
+            TotalAmountEnabled = defaults.TotalAmountEnabled;
         }
     }
 }

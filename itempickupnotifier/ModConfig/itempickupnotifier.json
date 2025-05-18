@@ -2,5 +2,6 @@
     "Anchor": "RightBottom",
     "HorizontalOffset": 0.0,
     "VerticalOffset": 0.0,
-    "FontSize": 16.0
+    "FontSize": 16.0,
+    "TotalCountEnabled": false
 }

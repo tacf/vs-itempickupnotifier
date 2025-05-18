@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using ItemPickupNotifier.Config;
 using ItemPickupNotifier.GUI;
 using Vintagestory.API.Client;
@@ -14,7 +16,7 @@ namespace ItemPickupNotifier
 
         private ICoreClientAPI capi;
         private IClientPlayer player;
-        private readonly Dictionary<string, ItemStack[]> cachedInventories = new();
+        private static readonly Dictionary<string, ItemStack[]> cachedInventories = new();
         private ItemStack _lastItemStackRemoved;
         private long playerAwaitListenerId;
 
@@ -82,14 +84,15 @@ namespace ItemPickupNotifier
             var slotChangedItemType = slotChange && (currentItemStack?.Id != newItemStack?.Id);
             var isStackSwap = slotChange && slotChangedItemType;
             var isLastRemovedItem = (slotFilled || slotChangedAmmount || slotChangedItemType) && _lastItemStackRemoved != null && _lastItemStackRemoved.Id == newItemStack.Id && _lastItemStackRemoved.StackSize == newStackSize;
+
+            cachedInventories[invKey][slotId] = newItemStack?.Clone();
             if (currentStackSize < newStackSize && !isStackSwap && !isLastRemovedItem)
             {
                 NotifyItemPickup(newItemStack, currentStackSize);
                 _lastItemStackRemoved = null;
             }
 
-            if (!isLastRemovedItem || slotEmptied || !slotNoOp) _lastItemStackRemoved = currentItemStack?.Clone();
-            cachedInventories[invKey][slotId] = newItemStack?.Clone();
+            if (!isLastRemovedItem || slotEmptied || !slotNoOp) _lastItemStackRemoved = currentItemStack?.Clone();      
         }
 
         private static void NotifyItemPickup(ItemStack newStack, int currentSize)
@@ -117,6 +120,13 @@ namespace ItemPickupNotifier
         {
             var typeName = inv.GetType().Name;
             return typeName is "InventoryPlayerHotbar" or "InventoryPlayerBackPacks";
+        }
+
+        public static int GetTotalItemCountInInventories(int itemCode)
+        {
+            return cachedInventories.Values
+                .SelectMany(inv => inv.Where(stack => stack?.Id == itemCode))
+                .Sum(stack => stack.StackSize);
         }
     }
 }
