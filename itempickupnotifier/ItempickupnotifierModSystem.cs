@@ -113,7 +113,6 @@ namespace ItemPickupNotifier
             _NotifierOverlay.BackgroundVisible(false);
             _NotifierOverlay.Debug(false);
             _NotifierOverlay.RefreshOverlay();
-            _GuiSettings.RevertSettings();
             _GuiSettings.TryClose();
             return true;
         }
