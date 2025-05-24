@@ -1,22 +1,23 @@
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
 namespace ItemPickupNotifier.GUI
 {
 
-    public class SettingsUI : GuiDialog
+    public class SettingsUI : GuiDialog, IElement
     {
         public override string ToggleKeyCombinationCode { get; }
 
         private readonly string _dialogTitle;
         private readonly string _settingsUIId;
         private const int _width = 400;
-        private const int _height = 500;
-        private readonly List<Section> _sections = new();
+        private const int _height = 525;
+        private List<Section> _sections = new();
         private ElementBounds _nextSectionBounds;
         private readonly ActionConsumable _onSave;
-        private readonly ActionConsumable _onReset;
+        private readonly ActionConsumable _onCancel;
 
 
 
@@ -24,7 +25,7 @@ namespace ItemPickupNotifier.GUI
         {
             _settingsUIId = id;
             _onSave = onSave;
-            _onReset = onReset;
+            _onCancel = onReset;
             _dialogTitle = UITils.GetLangString(id, "global.settings-title");
         }
 
@@ -45,7 +46,7 @@ namespace ItemPickupNotifier.GUI
             else
             {
                 // Hack - possibly fixed if true that https://github.com/anegostudios/vsapi/issues/45
-                var fY = _nextSectionBounds.fixedY + _nextSectionBounds.fixedOffsetY + _nextSectionBounds.fixedHeight + _nextSectionBounds.fixedPaddingY*4;
+                var fY = _nextSectionBounds.fixedY + _nextSectionBounds.fixedOffsetY + _nextSectionBounds.fixedHeight + _nextSectionBounds.fixedPaddingY * 4;
                 _nextSectionBounds = GUI.Section.GetBaseBounds(_width, fY);
             }
 
@@ -54,7 +55,7 @@ namespace ItemPickupNotifier.GUI
         }
 
 
-        public void Build()
+        public GuiComposer Build()
         {
 
             // Dialog base bound
@@ -70,7 +71,7 @@ namespace ItemPickupNotifier.GUI
 
             BuildSettingsSections();
             BuildButtons();
-            SingleComposer.EndChildElements().Compose();
+            return SingleComposer.EndChildElements().Compose();
         }
 
         private void BuildSettingsSections()
@@ -111,7 +112,7 @@ namespace ItemPickupNotifier.GUI
 
 
             // Reset button Bounds 
-            var resetButtonBounds = buttonBaseBounds.FlatCopy()
+            var cancelButtonBounds = buttonBaseBounds.FlatCopy()
                 .WithFixedOffset(-(buttonWidth / 1.5), 0);
 
             // Save button Bounds
@@ -119,8 +120,8 @@ namespace ItemPickupNotifier.GUI
                 .WithFixedOffset(buttonWidth / 1.5, 0);
 
             SingleComposer
-                .AddSmallButton("Reset Defaults", _onReset, resetButtonBounds)
-                .AddSmallButton("Save", _onSave, saveButtonBounds);
+                .AddSmallButton(UITils.GetLangString(_settingsUIId, "global.cancel"), _onCancel, cancelButtonBounds)
+                .AddSmallButton(UITils.GetLangString(_settingsUIId, "global.save"), _onSave, saveButtonBounds);
         }
 
         private void OnTitleBarClose()
@@ -128,6 +129,15 @@ namespace ItemPickupNotifier.GUI
             if (IsOpened())
             {
                 TryClose();
+            }
+        }
+
+
+        public void RevertSettings()
+        {
+            foreach (var element in _sections)
+            {
+                if (element is IElement iElement) iElement.RevertSettings();
             }
         }
     }
