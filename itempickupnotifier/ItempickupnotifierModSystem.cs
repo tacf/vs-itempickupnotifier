@@ -11,62 +11,192 @@ namespace ItemPickupNotifier
 
     public class ItempickupnotifierModSystem : ModSystem
     {
-        public static NotifierOverlay NotifierOverlay;
-        public static ItemPickupNotifierConfig Config { get; private set; } = new();
+        private static NotifierOverlay _NotifierOverlay;
+        private static SettingsUI _GuiSettings;
+        public static ItemPickupNotifierConfig Config;
 
-        private ICoreClientAPI capi;
-        private IClientPlayer player;
-        private static readonly Dictionary<string, ItemStack[]> cachedInventories = new();
+        private static ICoreClientAPI _capi;
+        private IClientPlayer _player;
+        private static Dictionary<string, ItemStack[]> _cachedInventories = new();
         private ItemStack _lastItemStackRemoved;
-        private long playerAwaitListenerId;
+        private long _playerAwaitListenerId;
 
         public override void StartClientSide(ICoreClientAPI api)
         {
-            capi = api;
-            base.StartClientSide(capi);
+            _capi = api;
+            base.StartClientSide(_capi);
 
-            capi.Event.LeftWorld += OnClientLeave;
-            playerAwaitListenerId = capi.Event.RegisterGameTickListener(CheckPlayerReady, 200);
+            _capi.Event.LeftWorld += OnClientLeave;
+            _playerAwaitListenerId = _capi.Event.RegisterGameTickListener(CheckPlayerReady, 200);
 
-            Config = capi.LoadModConfig<ItemPickupNotifierConfig>(ItemPickupNotifierConfig.FileName) ?? new();
-            capi.StoreModConfig(Config, ItemPickupNotifierConfig.FileName);
+            Config = new(_capi);
+            Config.Load(_capi);
+            SaveSettings();
 
-            NotifierOverlay = new(capi);
+            _NotifierOverlay = new(_capi);
+            _GuiSettings = CreateSettingsUI();
+            _GuiSettings.Build();
+            RegisterHotKeys();
+        }
+
+        public static void SaveSettings()
+        {
+            // Create a simplified version of the config for serialization
+            Config.Save();
+        }
+
+        private SettingsUI CreateSettingsUI()
+        {
+            SettingsUI ui = new("itempickupnotifier", _capi, OnSettingsSavedClicked, OnCancelClicked);
+
+            ui.Section("global")
+                .AddSwitch("enabled", OnModToggled, Config.Enabled);
+            ui.Section("font")
+                .AddSlider("size", OnFontSizeChanged, Config.GetUnscaledFontSize(), minValue: 5, maxValue: 20)
+                .AddSwitch("bold", OnBoldToggled, Config.FontBold);
+            ui.Section("position")
+                .AddSlider("xoffset", OnXOffsetChanged, Config.GetUnscaledHorizontalOffset(), minValue: -100)
+                .AddSlider("yoffset", OnYOffsetChanged, Config.GetUnscaledVerticalOffset(), minValue: -100)
+                .AddDropdown("pos", OnSelectionChanged, Enum.GetNames(typeof(EnumDialogArea)), defaultName: EnumDialogArea.LeftBottom.ToString());
+            ui.Section("features")
+                .AddSwitch("total-amount-bags", OnTotalAmountToggled, Config.TotalAmountEnabled);
+            ui.Section("dev")
+                .AddSwitch("overlay-background", OnDevBackgroundToggled)
+                .AddSwitch("preview-mode", OnDevPreviewToggled);
+
+            return ui;
+        }
+
+        private void OnModToggled(bool toggled)
+        {
+            Config.Enabled = toggled;
+            _NotifierOverlay.SetEnabled(toggled);
+            _NotifierOverlay.Debug(_NotifierOverlay.IsDebugMode());
+            _NotifierOverlay.RefreshOverlay();
+        }
+
+
+        private void OnTotalAmountToggled(bool totalAmountEnabled)
+        {
+            Config.TotalAmountEnabled = totalAmountEnabled;
+            _NotifierOverlay.RefreshOverlay();
+        }
+
+
+        private static bool OnFontSizeChanged(int fontSize)
+        {
+            Config.FontSize = fontSize;
+            _NotifierOverlay.RefreshOverlay();
+            return true;
+        }
+
+
+        private static bool OnXOffsetChanged(int offset)
+        {
+            Config.HorizontalOffset = offset;
+            _NotifierOverlay.RefreshOverlay();
+            return true;
+        }
+
+        private static bool OnYOffsetChanged(int offset)
+        {
+            Config.VerticalOffset = offset;
+            _NotifierOverlay.RefreshOverlay();
+            return true;
+        }
+        
+
+
+        private static bool OnSettingsSavedClicked()
+        {
+            SaveSettings();
+            _NotifierOverlay.BackgroundVisible(false);
+            _NotifierOverlay.Debug(false);
+            _NotifierOverlay.RefreshOverlay();
+            _GuiSettings.RevertSettings();
+            _GuiSettings.TryClose();
+            return true;
+        }
+
+        private bool OnCancelClicked()
+        {
+            _GuiSettings.TryClose();
+            return true;
+        }
+
+        private void OnDevPreviewToggled(bool toggle)
+        {
+            _NotifierOverlay.Debug(toggle);
+        }
+
+        private void OnDevBackgroundToggled(bool toggle)
+        {
+            _NotifierOverlay.BackgroundVisible(toggle);
+        }
+
+        private void OnSelectionChanged(string code, bool selected)
+        {
+            if (selected)
+            {
+                Config.Anchor = code;
+                _NotifierOverlay.RefreshOverlay();
+            }
+        }
+
+        private void OnBoldToggled(bool bold)
+        {
+            Config.FontBold = bold;
+            _NotifierOverlay.RefreshOverlay();
+        }
+
+
+        private void RegisterHotKeys()
+        {
+            _capi.Input.RegisterHotKey("itempickupnotifier:config", "Item Pickup Notifier Config", GlKeys.Z, type: HotkeyType.GUIOrOtherControls, ctrlPressed: true);
+            _capi.Input.SetHotKeyHandler("itempickupnotifier:config", OnConfigChanged);
+        }
+
+        private bool OnConfigChanged(KeyCombination keyCombination)
+        {
+            if (_GuiSettings.IsOpened()) _GuiSettings.TryClose();
+            else _GuiSettings.TryOpen();
+        
+            return true;
         }
 
         private void CheckPlayerReady(float dt)
         {
-            if (capi.PlayerReadyFired)
+            if (_capi.PlayerReadyFired)
             {
-                capi.Logger.Debug("Player is ready - Caching Inventories");
-                player = capi.World.Player;
-                foreach (var (invKey, inv) in player.InventoryManager.Inventories)
+                _capi.Logger.Debug("Player is ready - Caching Inventories");
+                _player = _capi.World.Player;
+                foreach (var (invKey, inv) in _player.InventoryManager.Inventories)
                 {
                     if (!IsValidInventoryType(inv)) continue;
 
                     inv.SlotModified += slotId => SlotModified(invKey, slotId);
-                    cachedInventories[invKey] = CopyInventorySlots((InventoryBase)inv);
+                    _cachedInventories[invKey] = CopyInventorySlots((InventoryBase)inv);
                 }
-                capi.Logger.Debug("Unregistering Player Await Listener");
-                capi.Event.UnregisterGameTickListener(playerAwaitListenerId);
+                _capi.Logger.Debug("Unregistering Player Await Listener");
+                _capi.Event.UnregisterGameTickListener(_playerAwaitListenerId);
             }
         }
 
         private void OnClientLeave()
         {
-            cachedInventories.RemoveAll((_, _) => true);
+            _cachedInventories.RemoveAll((_, _) => true);
             _lastItemStackRemoved = null;
-            player = null;
+            _player = null;
         }
 
         private void SlotModified(string invKey, int slotId)
         {
-            var inv = (InventoryBase)player.InventoryManager.Inventories[invKey];
-            var cachedInvStacks = cachedInventories[invKey];
+            var inv = (InventoryBase)_player.InventoryManager.Inventories[invKey];
+            var cachedInvStacks = _cachedInventories[invKey];
             if (cachedInvStacks == null || cachedInvStacks.Length != inv.Count)
             {
                 // Refresh cached inventories -> mainly happens dues to changes in equipped bags
-                cachedInventories[invKey] = CopyInventorySlots(inv);
+                _cachedInventories[invKey] = CopyInventorySlots(inv);
                 return;
             }
 
@@ -85,22 +215,23 @@ namespace ItemPickupNotifier
             var isStackSwap = slotChange && slotChangedItemType;
             var isLastRemovedItem = (slotFilled || slotChangedAmmount || slotChangedItemType) && _lastItemStackRemoved != null && _lastItemStackRemoved.Id == newItemStack.Id && _lastItemStackRemoved.StackSize == newStackSize;
 
-            cachedInventories[invKey][slotId] = newItemStack?.Clone();
+            _cachedInventories[invKey][slotId] = newItemStack?.Clone();
             if (currentStackSize < newStackSize && !isStackSwap && !isLastRemovedItem)
             {
                 NotifyItemPickup(newItemStack, currentStackSize);
                 _lastItemStackRemoved = null;
             }
 
-            if (!isLastRemovedItem || slotEmptied || !slotNoOp) _lastItemStackRemoved = currentItemStack?.Clone();      
+            if (!isLastRemovedItem || slotEmptied || !slotNoOp) _lastItemStackRemoved = currentItemStack?.Clone();
+            _cachedInventories[invKey][slotId] = newItemStack?.Clone();
         }
 
         private static void NotifyItemPickup(ItemStack newStack, int currentSize)
         {
             var notifyStack = newStack.Clone();
             notifyStack.StackSize -= currentSize;
-            NotifierOverlay.AddItemStack(notifyStack);
-            NotifierOverlay.ShowNotification();
+            _NotifierOverlay.AddItemStack(notifyStack);
+            _NotifierOverlay.ShowNotification();
         }
 
         private static ItemStack[] CopyInventorySlots(InventoryBase inv)
@@ -124,7 +255,7 @@ namespace ItemPickupNotifier
 
         public static int GetTotalItemCountInInventories(int itemCode)
         {
-            return cachedInventories.Values
+            return _cachedInventories.Values
                 .SelectMany(inv => inv.Where(stack => stack?.Id == itemCode))
                 .Sum(stack => stack.StackSize);
         }
