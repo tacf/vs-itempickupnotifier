@@ -1,0 +1,22 @@
+{
+    "_comentarios-1": "Item Pickup Notifier v1.6.2 || Enlace de VS ModDB: https://mods.vintagestory.at/show/mod/23330 ",
+    "_comentarios-2": "Traducido por C4BR3R4 || Última Modificación: 28/05/2025 || Registro de Cambios: https://c4br3r4.es/index.php?topic=1368.0 ",
+
+    "global.settings-title": "Configuración de «Item Pickup Notifier»",
+    "global.save": "Guardar",
+    "global.cancel": "Cancelar",
+    "section.global.title": "Ajustes Generales",
+    "section.global.enabled": "Activar Mod",
+    "section.font.title": "Ajustes del Texto",
+    "section.font.bold": "Negrita",
+    "section.font.size": "Tamaño",
+    "section.position.title": "Posición del Panel",
+    "section.position.pos": "Anclaje en Pantalla",
+    "section.position.xoffset": "Compensación X",
+    "section.position.yoffset": "Compensación Y",
+    "section.features.title": "Características",
+    "section.features.total-amount-bags": "Mostrar Cantidad Total",
+    "section.dev.title": "Ajustes de Desarrollador",
+    "section.dev.overlay-background": "Añadir Fondo",
+    "section.dev.preview-mode": "Previsualizar"
+}
