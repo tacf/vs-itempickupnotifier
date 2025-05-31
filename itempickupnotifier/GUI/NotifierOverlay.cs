@@ -1,10 +1,11 @@
 using System.Collections.Generic;
-using System.Linq;
+using System;
 using System.Text.RegularExpressions;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using System.Linq;
 
 namespace ItemPickupNotifier.GUI
 {
@@ -15,7 +16,7 @@ namespace ItemPickupNotifier.GUI
 
         private readonly double _showDuration = 4.0; // Duration in seconds to show notification
         private long _showUntilMs;
-        private readonly List<ItemStack> _itemStacks = new List<ItemStack>();
+        private readonly List<Tuple<ItemStack, long>> _itemStacks = new ();
         private readonly CairoFont _font;
         private readonly Vec4f _colour = new(0.91f, 0.87f, 0.81f, 1);
         private bool _debugBackgroundVisible = false;
@@ -47,6 +48,7 @@ namespace ItemPickupNotifier.GUI
 
         public override void OnRenderGUI(float deltaTime)
         {
+            CheckExpiredItems();
             base.OnRenderGUI(deltaTime);
             if (CheckWindowResize())
             {
@@ -88,8 +90,9 @@ namespace ItemPickupNotifier.GUI
             // Create stacked text elements
             double yOffset = itemEntrySize * (_itemStacks.Count - 1);
 
-            foreach (var itemStack in _itemStacks)
+            foreach (var itemStackTuple in _itemStacks)
             {
+                var itemStack = itemStackTuple.Item1;
                 if (itemStack.ResolveBlockOrItem(capi.World))
                 {
                     CompositeTexture texture = itemStack.Item != null ? itemStack.Item.FirstTexture : itemStack.Block.FirstTextureInventory;
@@ -99,7 +102,12 @@ namespace ItemPickupNotifier.GUI
                         var isComp = new ItemstackTextComponent(capi, itemStack, 35, 0, EnumFloat.Right);
                         isComp.offY -= 10;
                         string totalCount = "";
-                        if (ItempickupnotifierModSystem.Config.TotalAmountEnabled) totalCount = " (" + ItempickupnotifierModSystem.GetTotalItemCountInInventories(itemStack.Id) + ")";
+                        if (ItempickupnotifierModSystem.Config.TotalAmountEnabled)
+                        {
+                            var inBags = ItempickupnotifierModSystem.GetTotalItemCountInInventories(itemStack.Id);
+                            if (inBags > 1) totalCount = " (" + inBags + ")";
+                            if (IsDebugMode()) totalCount = " (99)";
+                        }
                         guiComposer.AddRichtext(new RichTextComponentBase[] { isComp, new RichTextComponent(capi, Regex.Replace(itemStack.StackSize + "x " + itemStack.GetName() + totalCount, "<.*?>", string.Empty), _font) }, textItemStackBounds);
                         yOffset -= itemEntrySize;
                     }
@@ -113,20 +121,35 @@ namespace ItemPickupNotifier.GUI
 
         public void AddItemStack(ItemStack itemStack)
         {
-            var index = _itemStacks.FindIndex(i => i.Id == itemStack.Id);
+            var index = _itemStacks.FindIndex(i => i.Item1.Id == itemStack.Id);
+            var expireAt = capi.World.ElapsedMilliseconds + (long)(_showDuration * 1000);
             if (index >= 0)
             {
                 // Refresh current value and push it to the top of the list
-                _itemStacks.Add(itemStack);
-                _itemStacks.Last().StackSize += _itemStacks[index].StackSize;
+                _itemStacks.Add(new Tuple<ItemStack, long>(itemStack, expireAt));
+                _itemStacks.Last().Item1.StackSize += _itemStacks[index].Item1.StackSize;
                 _itemStacks.RemoveAt(index);
             }
             else
             {
-                _itemStacks.Add(itemStack);
+                _itemStacks.Add(new Tuple<ItemStack, long>(itemStack, expireAt));
             }
 
             RefreshOverlay();
+        }
+
+        private void CheckExpiredItems()
+        {
+            var needsRedraw = false;
+            foreach (var item in _itemStacks.Reverse<Tuple<ItemStack, long>>())
+            {
+                if ((capi.World.ElapsedMilliseconds > item.Item2) && item.Item2 != -1)
+                {
+                    _itemStacks.Remove(item);
+                    needsRedraw = true;
+                }
+            }
+            if (needsRedraw) RefreshOverlay();
         }
 
         protected virtual CairoFont InitFont()
@@ -206,19 +229,19 @@ namespace ItemPickupNotifier.GUI
         {
             _itemStacks.Clear();
             // Sealed Fired Crock
-            _itemStacks.Add(new ItemStack(992, EnumItemClass.Item, 1, new TreeAttribute(), capi.World));
+            _itemStacks.Add(new Tuple<ItemStack, long>(new ItemStack(992, EnumItemClass.Item, 1, new TreeAttribute(), capi.World), -1));
             // High Fertility soil
-            _itemStacks.Add(new ItemStack(6414, EnumItemClass.Block, 31, new TreeAttribute(), capi.World));
+            _itemStacks.Add(new Tuple<ItemStack, long>(new ItemStack(6414, EnumItemClass.Block, 31, new TreeAttribute(), capi.World), -1));
             // Leather Backpak
-            _itemStacks.Add(new ItemStack(2312, EnumItemClass.Item, 1, new TreeAttribute(), capi.World));
+            _itemStacks.Add(new Tuple<ItemStack, long>(new ItemStack(2312, EnumItemClass.Item, 1, new TreeAttribute(), capi.World), -1));
             // Magic Wand
-            _itemStacks.Add(new ItemStack(1, EnumItemClass.Item, 1, new TreeAttribute(), capi.World));
+            _itemStacks.Add(new Tuple<ItemStack, long>(new ItemStack(1, EnumItemClass.Item, 1, new TreeAttribute(), capi.World), -1));
             // Ruined Sword
-            _itemStacks.Add(new ItemStack(1928, EnumItemClass.Item, 1, new TreeAttribute(), capi.World));
+            _itemStacks.Add(new Tuple<ItemStack, long>(new ItemStack(1928, EnumItemClass.Item, 1, new TreeAttribute(), capi.World), -1));
             // Vertex Eater
-            _itemStacks.Add(new ItemStack(294, EnumItemClass.Block, 54, new TreeAttribute(), capi.World));
+            _itemStacks.Add(new Tuple<ItemStack, long>(new ItemStack(294, EnumItemClass.Block, 54, new TreeAttribute(), capi.World), -1));
             // Creative Light
-            _itemStacks.Add(new ItemStack(263, EnumItemClass.Block, 7, new TreeAttribute(), capi.World));
+            _itemStacks.Add(new Tuple<ItemStack, long>(new ItemStack(263, EnumItemClass.Block, 7, new TreeAttribute(), capi.World), -1));
 
         }
 

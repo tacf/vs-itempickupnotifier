@@ -20,8 +20,8 @@ namespace ItemPickupNotifier.GUI
 
 
         private double _currentYOffset = 0;
-        private static readonly double _elementHeight = ElementBounds.scaled(25);
-        private static readonly double _elementPadding = ElementBounds.scaled(5);
+        private static double _elementHeight;
+        private static double _elementPadding;
 
         private readonly ElementBounds _baseBounds;
         private ElementBounds _settingDescriptionBounds;
@@ -32,29 +32,28 @@ namespace ItemPickupNotifier.GUI
 
 
 
-        public Section(string settingsId, string titleLangKey, ICoreClientAPI capi, ElementBounds bounds) : base(capi, bounds)
+        public Section(string settingsId, string titleLangKey, ICoreClientAPI capi, ElementBounds bounds, double elementHeight = 25, double elementPadding = 10) 
+            : base(capi, bounds.WithFixedHeight(_elementHeight + _elementPadding))
         {
             _titleLangKey = titleLangKey;
             _settingsUIId = settingsId;
+            _elementHeight = elementHeight;
+            _elementPadding = elementPadding;
+
             _baseBounds = bounds;
+            _baseBounds.WithFixedHeight(_elementHeight + _elementPadding);
+
+            Bounds = _baseBounds;
             _api = capi;
             _container = new GuiElementContainer(_api, _baseBounds);
             GenerateTitle();
         }
-
-        public static ElementBounds GetBaseBounds(double width, double yOffset = 0)
-        {
-            return ElementBounds
-                    .FixedOffseted(EnumDialogArea.CenterTop, 0, yOffset, ElementBounds.scaled(width * 0.9), _elementHeight + _elementPadding)
-                    .WithFixedPadding(ElementBounds.scaled(5));
-        }
-
         private void GenerateTitle()
         {
             var font = _font.Clone();
             font.FontWeight = Cairo.FontWeight.Bold;
             font.WithFontSize(17f);
-            var titleBounds = ElementBounds.Fixed(0, 0, Width, _elementHeight);
+            var titleBounds = ElementBounds.FixedSize(Width, _elementHeight);
             var titleElement = new GuiElementStaticText(_api, Title, EnumTextOrientation.Left, titleBounds, font);
             _container.Add(titleElement);
         }
@@ -62,14 +61,14 @@ namespace ItemPickupNotifier.GUI
 
         private GuiElement GenerateSettingLabel(string key)
         {
-            return new GuiElementStaticText(_api, GetLangString(key), EnumTextOrientation.Left, _settingDescriptionBounds, _font);
+            var settingLabel = new GuiElementStaticText(_api, GetLangString(key), EnumTextOrientation.Left, _settingDescriptionBounds, _font);
+            return settingLabel;
         }
 
         public Section AddSwitch(string descriptionLangKey, Action<bool> onToggled, bool toggled = false)
         {
             UpdateNextChildBounds();
-            var cbSize = ElementBounds.scaled(10);
-            var cbElement = new Switch(_api, toggled, onToggled, _settingElementBounds.FlatCopy().WithFixedSize(cbSize, cbSize));
+            var cbElement = new Switch(_api, toggled, onToggled, _settingElementBounds);
             _container.Add(GenerateSettingLabel(descriptionLangKey));
             _container.Add(cbElement);
             return this;
@@ -88,9 +87,8 @@ namespace ItemPickupNotifier.GUI
         {
             UpdateNextChildBounds();
             values ??= names;
-            var bounds = ElementBounds.Empty;
             var index = (defaultName == null) ? 0 : names.IndexOf(defaultName);
-            var dropDownElement = new Dropdown(_api, values, names, index, onSelectionChanged, _settingElementBounds, _font, false);
+            var dropDownElement = new Dropdown(_api, values, names, index, onSelectionChanged, _settingElementBounds, _font);
             _container.Add(GenerateSettingLabel(descriptionLangKey));
             _container.Add(dropDownElement);
             return this;
@@ -105,11 +103,11 @@ namespace ItemPickupNotifier.GUI
         private void UpdateNextChildBounds()
         {
             _currentYOffset += _elementHeight + _elementPadding;
-            var descLeftPadding = ElementBounds.scaled(Width * 0.05);
-            _settingDescriptionBounds = ElementBounds.Fixed(descLeftPadding, _currentYOffset, Width / 2 - descLeftPadding, _elementHeight);
-            _settingElementBounds = ElementBounds.Fixed(Width / 2, _currentYOffset, Width / 2, _elementHeight);
-            _baseBounds.fixedHeight += _elementHeight;
-            api.Logger.Debug("fixedY: {0}, fixedHeight: {1}", _baseBounds.fixedY, _baseBounds.fixedHeight);
+            _baseBounds.fixedHeight += _elementHeight + _elementPadding;
+
+            _settingDescriptionBounds = ElementBounds.Fixed(Width * 0.05, _currentYOffset, Width * 0.45, _elementHeight);
+            _settingElementBounds = _settingDescriptionBounds.RightCopy().WithFixedWidth(Width * 0.45);
+
         }
 
         private string GetLangString(string key)

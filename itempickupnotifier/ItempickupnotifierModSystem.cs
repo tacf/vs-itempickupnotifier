@@ -57,7 +57,7 @@ namespace ItemPickupNotifier
             ui.Section("position")
                 .AddSlider("xoffset", OnXOffsetChanged, Config.GetUnscaledHorizontalOffset(), minValue: -100)
                 .AddSlider("yoffset", OnYOffsetChanged, Config.GetUnscaledVerticalOffset(), minValue: -100)
-                .AddDropdown("pos", OnSelectionChanged, Enum.GetNames(typeof(EnumDialogArea)), defaultName: EnumDialogArea.LeftBottom.ToString());
+                .AddDropdown("pos", OnSelectionChanged, Enum.GetNames(typeof(EnumDialogArea)), defaultName: Config.Anchor.ToString());
             ui.Section("features")
                 .AddSwitch("total-amount-bags", OnTotalAmountToggled, Config.TotalAmountEnabled);
             ui.Section("dev")
@@ -119,6 +119,7 @@ namespace ItemPickupNotifier
 
         private bool OnCancelClicked()
         {
+            _GuiSettings.RevertSettings();
             _GuiSettings.TryClose();
             return true;
         }
