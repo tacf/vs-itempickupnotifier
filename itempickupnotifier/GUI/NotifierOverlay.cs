@@ -12,7 +12,9 @@ namespace ItemPickupNotifier.GUI
 
     public class NotifierOverlay : HudElement
     {
+        // Prevent conficts with UIs and allow click through
         public override double DrawOrder => 0.06;
+        public override bool ShouldReceiveMouseEvents() => false;
 
         private readonly double _showDuration = 4.0; // Duration in seconds to show notification
         private long _showUntilMs;
