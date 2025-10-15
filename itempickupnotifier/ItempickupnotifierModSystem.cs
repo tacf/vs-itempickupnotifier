@@ -50,21 +50,35 @@ namespace ItemPickupNotifier
             SettingsUI ui = new("itempickupnotifier", _capi, OnSettingsSavedClicked, OnCancelClicked);
 
             ui.Section("global")
+                .AddDropdown("mode", OnModeChanged, Enum.GetNames(typeof(EnumNotifierMode)), defaultName: Config.Mode)
                 .AddSwitch("enabled", OnModToggled, Config.Enabled);
             ui.Section("font")
                 .AddSlider("size", OnFontSizeChanged, Config.GetUnscaledFontSize(), minValue: 5, maxValue: 20)
                 .AddSwitch("bold", OnBoldToggled, Config.FontBold);
             ui.Section("position")
+                .AddSwitch("invertalignment", OnAlignmentChanged, Config.InvertedAlignment)
                 .AddSlider("xoffset", OnXOffsetChanged, Config.GetUnscaledHorizontalOffset(), minValue: -100)
                 .AddSlider("yoffset", OnYOffsetChanged, Config.GetUnscaledVerticalOffset(), minValue: -100)
                 .AddDropdown("pos", OnSelectionChanged, Enum.GetNames(typeof(EnumDialogArea)), defaultName: Config.Anchor.ToString());
             ui.Section("features")
                 .AddSwitch("total-amount-bags", OnTotalAmountToggled, Config.TotalAmountEnabled);
             ui.Section("dev")
-                .AddSwitch("overlay-background", OnDevBackgroundToggled)
+                //.AddSwitch("overlay-background", OnDevBackgroundToggled)
                 .AddSwitch("preview-mode", OnDevPreviewToggled);
 
             return ui;
+        }
+
+        private void OnAlignmentChanged(bool toggled)
+        {
+            Config.InvertedAlignment = toggled;
+            _NotifierOverlay.RefreshOverlay();
+        }
+
+        private void OnModeChanged(string code, bool selected)
+        {
+            Config.Mode = code;
+            _NotifierOverlay.RefreshOverlay();
         }
 
         private void OnModToggled(bool toggled)
@@ -170,7 +184,7 @@ namespace ItemPickupNotifier
             {
                 _capi.Logger.Debug("Player is ready - Caching Inventories");
                 _player = _capi.World.Player;
-                foreach (var (invKey, inv) in _player.InventoryManager.Inventories)
+                foreach ((string invKey, IInventory inv) in _player.InventoryManager.Inventories)
                 {
                     if (!IsValidInventoryType(inv)) continue;
 

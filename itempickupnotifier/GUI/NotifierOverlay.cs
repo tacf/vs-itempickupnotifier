@@ -71,17 +71,82 @@ namespace ItemPickupNotifier.GUI
             UpdateFontSize(ItempickupnotifierModSystem.Config.FontSize);
             UpdateFontWeight(ItempickupnotifierModSystem.Config.FontBold);
 
-            double itemEntrySize = ElementBounds.scaled(30);
-            double overlayWidth = ElementBounds.scaled(500);
+            switch (ItempickupnotifierModSystem.Config.Mode)
+            {
+                case "IconsOnly":
+                    BuildIconsOnly();
+                    break;
+                default:
+                    BuildStandardMode();
+                    break;
+            }
+
+        }
+        
+        private void BuildIconsOnly()
+        {
+             double itemEntrySize = 35;
+
+            // Dialog base bound
+            ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog
+                .WithAlignment(EnumDialogArea.CenterBottom)
+                .WithSizing(ElementSizing.FitToChildren)
+                .WithFixedOffset(0,-130);
+
+            // Background boundaries
+            ElementBounds bgBounds = ElementBounds.Fill.WithSizing(ElementSizing.FitToChildren).WithAlignment(EnumDialogArea.CenterMiddle);
+
+            var bgColor = new double[] { 0.0, 0.0, 0.0, _debugBackgroundVisible ? _backgroundPreviewAlpha : 0.0 };
+
+            var guiComposer = capi.Gui.CreateCompo("itemPickupNotifierIconsOnly", dialogBounds)
+                .AddGameOverlay(bgBounds, bgColor)
+                .BeginChildElements();
+
+            // Create stacked text elements
+            double yOffset = itemEntrySize * (_itemStacks.Count - 1);
+
+            DummyInventory inv = new DummyInventory(capi, _itemStacks.Count);
+            ElementBounds iconBounds = null;
+            
+            foreach (var itemStackTuple in _itemStacks)
+            {
+                var itemStack = itemStackTuple.Item1;
+                if (itemStack.ResolveBlockOrItem(capi.World))
+                {
+                    CompositeTexture texture = itemStack.Item != null ? itemStack.Item.FirstTexture : itemStack.Block.FirstTextureInventory;
+                    if (texture != null)
+                    {
+                        if (iconBounds == null)
+                            iconBounds = ElementStdBounds.Slot(0, 0);
+                        else
+                            iconBounds = iconBounds.RightCopy(5,0,0,0);
+
+                        ItemSlot slot = new DummySlot(itemStack, inv);
+                        slot.HexBackgroundColor = GuiStyle.DialogSlotBackColor.ToString();
+                        
+                        guiComposer.AddPassiveItemSlot(iconBounds, inv, slot, true);
+                        yOffset -= itemEntrySize;
+                    }
+                }
+            }
+
+            guiComposer.EndChildElements();
+            guiComposer.zDepth = 49f;
+            SingleComposer = guiComposer.Compose();
+        }
+        
+        private void BuildStandardMode()
+        {
+             double itemEntrySize = 35;
 
             // Dialog base bound
             ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog
                 .WithAlignment(ItempickupnotifierModSystem.Config.GetOverlayAnchor())
-                .WithFixedOffset(ItempickupnotifierModSystem.Config.HorizontalOffset, ItempickupnotifierModSystem.Config.VerticalOffset)
-                .WithFixedPadding(ElementBounds.scaled(5));
+                .WithFixedOffset(ItempickupnotifierModSystem.Config.HorizontalOffset,
+                    ItempickupnotifierModSystem.Config.VerticalOffset);
 
             // Background boundaries
-            ElementBounds bgBounds = ElementBounds.Fixed(0, 0, overlayWidth, itemEntrySize * _itemStacks.Count);
+            ElementBounds bgBounds = ElementBounds.Fill.WithSizing(ElementSizing.FitToChildren);
 
             var bgColor = new double[] { 0.0, 0.0, 0.0, _debugBackgroundVisible ? _backgroundPreviewAlpha : 0.0 };
 
@@ -92,6 +157,16 @@ namespace ItemPickupNotifier.GUI
             // Create stacked text elements
             double yOffset = itemEntrySize * (_itemStacks.Count - 1);
 
+            EnumDialogArea dialogBaseAlign = EnumDialogArea.RightTop;
+            EnumFloat itemAlgin = EnumFloat.Right;
+            EnumTextOrientation textOrientation = EnumTextOrientation.Right;
+            if (ItempickupnotifierModSystem.Config.InvertedAlignment)
+            {
+                dialogBaseAlign = EnumDialogArea.LeftTop;
+                itemAlgin = EnumFloat.Left;
+                textOrientation = EnumTextOrientation.Left;
+            }
+            
             foreach (var itemStackTuple in _itemStacks)
             {
                 var itemStack = itemStackTuple.Item1;
@@ -100,9 +175,11 @@ namespace ItemPickupNotifier.GUI
                     CompositeTexture texture = itemStack.Item != null ? itemStack.Item.FirstTexture : itemStack.Block.FirstTextureInventory;
                     if (texture != null)
                     {
-                        ElementBounds textItemStackBounds = ElementBounds.Fixed(0, yOffset, overlayWidth, itemEntrySize);
-                        var isComp = new ItemstackTextComponent(capi, itemStack, 35, 0, EnumFloat.Right);
-                        isComp.offY -= 10;
+                        var scale = ItempickupnotifierModSystem.Config.FontSize / 100;
+                        ElementBounds textItemStackBounds = ElementBounds.FixedPos(dialogBaseAlign,(ItempickupnotifierModSystem.Config.InvertedAlignment ? 1 : -1)*35, yOffset + itemEntrySize*(1 + (0.75-scale)) / 2);
+                        ElementBounds bds = ElementBounds.FixedPos(dialogBaseAlign,0, yOffset + itemEntrySize*(1 + scale) / 2);
+
+                        ItemstackTextComponent isComp = new ItemstackTextComponent(capi, itemStack, 30, 0, itemAlgin);
                         string totalCount = "";
                         if (ItempickupnotifierModSystem.Config.TotalAmountEnabled)
                         {
@@ -110,14 +187,21 @@ namespace ItemPickupNotifier.GUI
                             if (inBags > 1) totalCount = " (" + inBags + ")";
                             if (IsDebugMode()) totalCount = " (99)";
                         }
-                        guiComposer.AddRichtext(new RichTextComponentBase[] { isComp, new RichTextComponent(capi, Regex.Replace(itemStack.StackSize + "x " + itemStack.GetName() + totalCount, "<.*?>", string.Empty), _font) }, textItemStackBounds);
+
+                        string text = Regex.Replace(itemStack.StackSize + "x " + itemStack.GetName() + totalCount,
+                            "<.*?>", string.Empty);
+                        _font.Orientation = textOrientation;
+                        _font.AutoBoxSize(text, textItemStackBounds);
+                        guiComposer.AddRichtext(text, _font, textItemStackBounds);
+                        guiComposer.AddRichtext([isComp], bds);
+                        
                         yOffset -= itemEntrySize;
                     }
                 }
             }
 
             guiComposer.EndChildElements();
-            guiComposer.zDepth = 49f;
+            guiComposer.zDepth = 149f;
             SingleComposer = guiComposer.Compose();
         }
 

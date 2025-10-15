@@ -3,9 +3,17 @@ using System;
 using Cairo;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 
 namespace ItemPickupNotifier.Config
 {
+
+    public enum EnumNotifierMode
+    {
+        Standard,
+        IconsOnly,
+    }
+    
     /// <summary>
     /// Configure the ItemPickupNotifier Overlay.
     /// </summary>
@@ -18,11 +26,18 @@ namespace ItemPickupNotifier.Config
 
         public ICoreClientAPI _capi;
 
+        // <summary> Display mode for notifications </summary>
+        public string Mode
+        {
+            get => _mode.ToString();
+            set => _mode = Enum.TryParse<EnumNotifierMode>(value, out EnumNotifierMode result) ? result : EnumNotifierMode.Standard;
+        }
+        
         /// <summary>Overlay Anchor (Base position - based on EnumDialogArea)</summary>
         public string Anchor
         {
-            get => anchor.ToString();
-            set => anchor = Enum.TryParse<EnumDialogArea>(value, out var result) ? result : EnumDialogArea.RightBottom;
+            get => _anchor.ToString();
+            set => _anchor = Enum.TryParse<EnumDialogArea>(value, out EnumDialogArea result) ? result : EnumDialogArea.RightBottom;
         }
 
         /// <summary>Horizontal offset (in pixels)</summary>
@@ -48,8 +63,10 @@ namespace ItemPickupNotifier.Config
         public bool FontBold = true;
         public bool TotalAmountEnabled = false;
         public bool Enabled = true;
+        public bool InvertedAlignment = false;
 
-        private EnumDialogArea anchor = EnumDialogArea.RightBottom;
+        private EnumDialogArea _anchor = EnumDialogArea.RightBottom;
+        private EnumNotifierMode _mode = EnumNotifierMode.Standard;
         private float _fontSize = 16.0f;
         private double _horizontalOffset = 0.0f;
         private double _verticalOffset = 0.0f;
@@ -61,7 +78,7 @@ namespace ItemPickupNotifier.Config
 
         public EnumDialogArea GetOverlayAnchor()
         {
-            return anchor;
+            return _anchor;
         }
 
         public void Save()
@@ -70,6 +87,8 @@ namespace ItemPickupNotifier.Config
             {
                 Enabled,
                 Anchor,
+                Mode,
+                InvertedAlignment,
                 HorizontalOffset = GetUnscaledHorizontalOffset(),
                 VerticalOffset = GetUnscaledVerticalOffset(),
                 FontSize = GetUnscaledFontSize(),
@@ -88,6 +107,8 @@ namespace ItemPickupNotifier.Config
             {
                 Enabled = loaded.Enabled;
                 Anchor = loaded.Anchor;
+                Mode = loaded.Mode;
+                InvertedAlignment = loaded.InvertedAlignment;
                 // The '% 100' is to ensure proper migration of existing configs (avoids settings windows out of bounds elements)
                 HorizontalOffset = loaded._horizontalOffset % 100;
                 VerticalOffset = loaded._verticalOffset % 100;
@@ -103,6 +124,8 @@ namespace ItemPickupNotifier.Config
             var defaults = new ItemPickupNotifierConfig(_capi);
             Enabled = defaults.Enabled;
             Anchor = defaults.Anchor;
+            Mode = defaults.Mode;
+            InvertedAlignment = defaults.InvertedAlignment;
             HorizontalOffset = defaults._horizontalOffset;
             VerticalOffset = defaults._verticalOffset;
             FontSize = defaults._fontSize;
