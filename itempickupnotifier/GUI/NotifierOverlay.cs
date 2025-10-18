@@ -16,7 +16,7 @@ namespace ItemPickupNotifier.GUI
         public override double DrawOrder => 0.06;
         public override bool ShouldReceiveMouseEvents() => false;
 
-        private readonly double _showDuration = 4.0; // Duration in seconds to show notification
+        public int DisplayTime = ItempickupnotifierModSystem.Config.NotificationDisplayTimeSeconds; // Duration in seconds to show notification
         private long _showUntilMs;
         private readonly List<Tuple<ItemStack, long>> _itemStacks = new ();
         private readonly CairoFont _font;
@@ -39,7 +39,7 @@ namespace ItemPickupNotifier.GUI
 
         public void ShowNotification()
         {
-            _showUntilMs = capi.World.ElapsedMilliseconds + (long)(_showDuration * 1000);
+            _showUntilMs = capi.World.ElapsedMilliseconds + (long)(DisplayTime * 1000);
 
             if (!IsOpened() && IsEnabled())
             {
@@ -208,7 +208,7 @@ namespace ItemPickupNotifier.GUI
         public void AddItemStack(ItemStack itemStack)
         {
             var index = _itemStacks.FindIndex(i => i.Item1.Id == itemStack.Id);
-            var expireAt = capi.World.ElapsedMilliseconds + (long)(_showDuration * 1000);
+            var expireAt = capi.World.ElapsedMilliseconds + (long)(DisplayTime * 1000);
             if (index >= 0)
             {
                 // Refresh current value and push it to the top of the list

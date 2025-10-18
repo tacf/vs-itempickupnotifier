@@ -5,6 +5,7 @@
     "section.global.title": "Global Settings",
     "section.global.enabled": "Enabled",
     "section.global.mode": "Display Mode",
+    "section.global.displaytime": "Notification Display time",
     "section.font.title": "Font Settings",
     "section.font.bold": "Bold",
     "section.font.size": "Size",

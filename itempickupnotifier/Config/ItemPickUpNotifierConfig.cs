@@ -64,6 +64,7 @@ namespace ItemPickupNotifier.Config
         public bool TotalAmountEnabled = false;
         public bool Enabled = true;
         public bool InvertedAlignment = false;
+        public int NotificationDisplayTimeSeconds = 4;
 
         private EnumDialogArea _anchor = EnumDialogArea.RightBottom;
         private EnumNotifierMode _mode = EnumNotifierMode.Standard;
@@ -88,6 +89,7 @@ namespace ItemPickupNotifier.Config
                 Enabled,
                 Anchor,
                 Mode,
+                NotificationDisplayTimeSeconds,
                 InvertedAlignment,
                 HorizontalOffset = GetUnscaledHorizontalOffset(),
                 VerticalOffset = GetUnscaledVerticalOffset(),
@@ -108,6 +110,7 @@ namespace ItemPickupNotifier.Config
                 Enabled = loaded.Enabled;
                 Anchor = loaded.Anchor;
                 Mode = loaded.Mode;
+                NotificationDisplayTimeSeconds = loaded.NotificationDisplayTimeSeconds;
                 InvertedAlignment = loaded.InvertedAlignment;
                 // The '% 100' is to ensure proper migration of existing configs (avoids settings windows out of bounds elements)
                 HorizontalOffset = loaded._horizontalOffset % 100;
@@ -125,6 +128,7 @@ namespace ItemPickupNotifier.Config
             Enabled = defaults.Enabled;
             Anchor = defaults.Anchor;
             Mode = defaults.Mode;
+            NotificationDisplayTimeSeconds = defaults.NotificationDisplayTimeSeconds;
             InvertedAlignment = defaults.InvertedAlignment;
             HorizontalOffset = defaults._horizontalOffset;
             VerticalOffset = defaults._verticalOffset;

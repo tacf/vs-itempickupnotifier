@@ -47,11 +47,13 @@ namespace ItemPickupNotifier
 
         private SettingsUI CreateSettingsUI()
         {
-            SettingsUI ui = new("itempickupnotifier", _capi, OnSettingsSavedClicked, OnCancelClicked);
+            SettingsUI ui = new("itempickupnotifier", _capi, OnSettingsSavedClicked, CloseWithoutSaving);
 
             ui.Section("global")
+                .AddSwitch("enabled", OnModToggled, Config.Enabled)
                 .AddDropdown("mode", OnModeChanged, Enum.GetNames(typeof(EnumNotifierMode)), defaultName: Config.Mode)
-                .AddSwitch("enabled", OnModToggled, Config.Enabled);
+                .AddSlider("displaytime", OnDisplayTimeChanged, Config.NotificationDisplayTimeSeconds, minValue: 4,
+                    maxValue: 30);
             ui.Section("font")
                 .AddSlider("size", OnFontSizeChanged, Config.GetUnscaledFontSize(), minValue: 5, maxValue: 20)
                 .AddSwitch("bold", OnBoldToggled, Config.FontBold);
@@ -64,9 +66,16 @@ namespace ItemPickupNotifier
                 .AddSwitch("total-amount-bags", OnTotalAmountToggled, Config.TotalAmountEnabled);
             ui.Section("dev")
                 //.AddSwitch("overlay-background", OnDevBackgroundToggled)
-                .AddSwitch("preview-mode", OnDevPreviewToggled);
+                .AddSwitch("preview-mode", OnDevPreviewToggled, persistState: false);
 
             return ui;
+        }
+
+        private bool OnDisplayTimeChanged(int displayTime)
+        {
+            Config.NotificationDisplayTimeSeconds = displayTime;
+            _NotifierOverlay.DisplayTime = displayTime;
+            return true;
         }
 
         private void OnAlignmentChanged(bool toggled)
@@ -120,44 +129,44 @@ namespace ItemPickupNotifier
         }
         
 
-
         private static bool OnSettingsSavedClicked()
         {
+            OnDevPreviewToggled(false);
+            OnDevPreviewToggled(false);
+            _GuiSettings.StoreCurrentValues();
             SaveSettings();
-            _NotifierOverlay.BackgroundVisible(false);
-            _NotifierOverlay.Debug(false);
             _NotifierOverlay.RefreshOverlay();
+
             _GuiSettings.TryClose();
             return true;
         }
 
-        private bool OnCancelClicked()
+        private bool CloseWithoutSaving()
         {
-            _GuiSettings.RevertSettings();
-            _GuiSettings.TryClose();
+            OnDevPreviewToggled(false);
+            OnDevPreviewToggled(false);
+            _GuiSettings.CloseWithoutSaving();
             return true;
         }
 
-        private void OnDevPreviewToggled(bool toggle)
+        private static void OnDevPreviewToggled(bool toggle)
         {
             _NotifierOverlay.Debug(toggle);
         }
 
-        private void OnDevBackgroundToggled(bool toggle)
+        private static void OnDevBackgroundToggled(bool toggle)
         {
             _NotifierOverlay.BackgroundVisible(toggle);
         }
 
-        private void OnSelectionChanged(string code, bool selected)
+        private static void OnSelectionChanged(string code, bool selected)
         {
-            if (selected)
-            {
-                Config.Anchor = code;
-                _NotifierOverlay.RefreshOverlay();
-            }
+            if (!selected) return;
+            Config.Anchor = code;
+            _NotifierOverlay.RefreshOverlay();
         }
 
-        private void OnBoldToggled(bool bold)
+        private static void OnBoldToggled(bool bold)
         {
             Config.FontBold = bold;
             _NotifierOverlay.RefreshOverlay();
@@ -167,17 +176,22 @@ namespace ItemPickupNotifier
         private void RegisterHotKeys()
         {
             _capi.Input.RegisterHotKey("itempickupnotifier:config", "Item Pickup Notifier Config", GlKeys.Z, type: HotkeyType.GUIOrOtherControls, ctrlPressed: true);
-            _capi.Input.SetHotKeyHandler("itempickupnotifier:config", OnConfigChanged);
+            _capi.Input.SetHotKeyHandler("itempickupnotifier:config", OnConfigHotKeyPressed);
         }
 
-        private bool OnConfigChanged(KeyCombination keyCombination)
+        private bool OnConfigHotKeyPressed(KeyCombination keyCombination)
         {
-            if (_GuiSettings.IsOpened()) _GuiSettings.TryClose();
+            if (_GuiSettings.IsOpened())
+            {
+                CloseWithoutSaving();
+            }
             else _GuiSettings.TryOpen();
         
             return true;
         }
 
+        
+        
         private void CheckPlayerReady(float dt)
         {
             if (_capi.PlayerReadyFired)
