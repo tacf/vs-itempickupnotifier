@@ -107,7 +107,8 @@ namespace ItemPickupNotifier.GUI
 
             DummyInventory inv = new DummyInventory(capi, _itemStacks.Count);
             ElementBounds iconBounds = null;
-            
+
+            bool hasValidItems = false;
             foreach (var itemStackTuple in _itemStacks)
             {
                 var itemStack = itemStackTuple.Item1;
@@ -116,6 +117,7 @@ namespace ItemPickupNotifier.GUI
                     CompositeTexture texture = itemStack.Item != null ? itemStack.Item.FirstTexture : itemStack.Block.FirstTextureInventory;
                     if (texture != null)
                     {
+                        hasValidItems = true;
                         if (iconBounds == null)
                             iconBounds = ElementStdBounds.Slot(0, 0);
                         else
@@ -123,7 +125,7 @@ namespace ItemPickupNotifier.GUI
 
                         ItemSlot slot = new DummySlot(itemStack, inv);
                         slot.HexBackgroundColor = GuiStyle.DialogSlotBackColor.ToString();
-                        
+
                         guiComposer.AddPassiveItemSlot(iconBounds, inv, slot, true);
                         yOffset -= itemEntrySize;
                     }
@@ -131,6 +133,10 @@ namespace ItemPickupNotifier.GUI
             }
 
             guiComposer.EndChildElements();
+
+            // Only compose if we have valid items, otherwise the FitToChildren bounds will fail
+            if (!hasValidItems) return;
+
             guiComposer.zDepth = 49f;
             SingleComposer = guiComposer.Compose();
         }
@@ -166,7 +172,8 @@ namespace ItemPickupNotifier.GUI
                 itemAlgin = EnumFloat.Left;
                 textOrientation = EnumTextOrientation.Left;
             }
-            
+
+            bool hasValidItems = false;
             foreach (var itemStackTuple in _itemStacks)
             {
                 var itemStack = itemStackTuple.Item1;
@@ -175,6 +182,7 @@ namespace ItemPickupNotifier.GUI
                     CompositeTexture texture = itemStack.Item != null ? itemStack.Item.FirstTexture : itemStack.Block.FirstTextureInventory;
                     if (texture != null)
                     {
+                        hasValidItems = true;
                         var scale = ItempickupnotifierModSystem.Config.FontSize / 100;
                         ElementBounds textItemStackBounds = ElementBounds.FixedPos(dialogBaseAlign,(ItempickupnotifierModSystem.Config.InvertedAlignment ? 1 : -1)*35, yOffset + itemEntrySize*(1 + (0.75-scale)) / 2);
                         ElementBounds bds = ElementBounds.FixedPos(dialogBaseAlign,0, yOffset + itemEntrySize*(1 + scale) / 2);
@@ -194,13 +202,17 @@ namespace ItemPickupNotifier.GUI
                         _font.AutoBoxSize(text, textItemStackBounds);
                         guiComposer.AddRichtext(text, _font, textItemStackBounds);
                         guiComposer.AddRichtext([isComp], bds);
-                        
+
                         yOffset -= itemEntrySize;
                     }
                 }
             }
 
             guiComposer.EndChildElements();
+
+            // Only compose if we have valid items, otherwise the FitToChildren bounds will fail
+            if (!hasValidItems) return;
+
             guiComposer.zDepth = 149f;
             SingleComposer = guiComposer.Compose();
         }
