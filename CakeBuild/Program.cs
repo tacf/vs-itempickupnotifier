@@ -26,7 +26,7 @@ public static class Program
 
 public class BuildContext : FrostingContext
 {
-    public const string ProjectName = "itempickupnotifier";
+    public const string ProjectName = "Itempickupnotifier";
     public string BuildConfiguration { get; }
     public string Version { get; }
     public string Name { get; }
@@ -36,7 +36,7 @@ public class BuildContext : FrostingContext
         : base(context)
     {
         BuildConfiguration = context.Argument("configuration", "Release");
-        var modInfo = context.DeserializeJsonFromFile<ModInfo>($"../{ProjectName}/modinfo.json");
+        ModInfo modInfo = context.DeserializeJsonFromFile<ModInfo>($"../{ProjectName}/modinfo.json");
         Version = modInfo.Version;
         Name = modInfo.ModID;
     }

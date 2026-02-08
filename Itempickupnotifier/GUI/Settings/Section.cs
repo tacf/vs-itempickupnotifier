@@ -27,7 +27,7 @@ namespace ItemPickupNotifier.GUI
         private ElementBounds _settingDescriptionBounds;
         private ElementBounds _settingElementBounds;
         private readonly GuiElementContainer _container;
-        private readonly CairoFont _font = CairoFont.WhiteSmallText();
+        private CairoFont _font = CairoFont.WhiteSmallText();
         private readonly ICoreClientAPI _api;
 
 
@@ -61,7 +61,10 @@ namespace ItemPickupNotifier.GUI
 
         private GuiElement GenerateSettingLabel(string key)
         {
-            GuiElementStaticText settingLabel = new GuiElementStaticText(_api, GetLangString(key), EnumTextOrientation.Left, _settingDescriptionBounds, _font);
+            String text = GetLangString(key);
+            GuiElementStaticText settingLabel = new GuiElementStaticText(_api, text, EnumTextOrientation.Left, _settingDescriptionBounds, _font);
+            _settingDescriptionBounds.CalcWorldBounds();
+            _font.AutoFontSize(text, _settingDescriptionBounds);
             return settingLabel;
         }
 
@@ -114,7 +117,13 @@ namespace ItemPickupNotifier.GUI
 
             _settingDescriptionBounds = ElementBounds.Fixed(Width * 0.05, _currentYOffset, Width * 0.45, _elementHeight);
             _settingElementBounds = _settingDescriptionBounds.RightCopy().WithFixedWidth(Width * 0.45);
+            ResetFont();
+        }
 
+
+        private void ResetFont()
+        {
+            _font = CairoFont.WhiteSmallText();
         }
 
         private string GetLangString(string key)

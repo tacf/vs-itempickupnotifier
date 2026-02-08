@@ -26,8 +26,14 @@ namespace ItemPickupNotifier.GUI
 
         public void StoreCurrentValues()
         {
-            if (!_persistValue) return;
-            _initialValue = On;
+            if (!_persistValue)
+            {
+                On = _initialValue;
+            }
+            else
+            {
+                _initialValue = On;
+            }
         }
     }
 }

@@ -14,6 +14,13 @@ namespace ItemPickupNotifier.Config
         IconsOnly,
     }
     
+    public enum EnumBackgroundMode
+    {
+        None,
+        Simple,
+        Native,
+    }
+    
     /// <summary>
     /// Configure the ItemPickupNotifier Overlay.
     /// </summary>
@@ -31,6 +38,13 @@ namespace ItemPickupNotifier.Config
         {
             get => _mode.ToString();
             set => _mode = Enum.TryParse<EnumNotifierMode>(value, out EnumNotifierMode result) ? result : EnumNotifierMode.Standard;
+        }
+        
+        // <summary> Background Type for notifications </summary>
+        public string Background
+        {
+            get => _backgroundMode.ToString();
+            set => _backgroundMode = Enum.TryParse<EnumBackgroundMode>(value, out EnumBackgroundMode result) ? result : EnumBackgroundMode.None;
         }
         
         /// <summary>Overlay Anchor (Base position - based on EnumDialogArea)</summary>
@@ -68,6 +82,7 @@ namespace ItemPickupNotifier.Config
 
         private EnumDialogArea _anchor = EnumDialogArea.RightBottom;
         private EnumNotifierMode _mode = EnumNotifierMode.Standard;
+        private EnumBackgroundMode _backgroundMode = EnumBackgroundMode.None;
         private float _fontSize = 16.0f;
         private double _horizontalOffset = 0.0f;
         private double _verticalOffset = 0.0f;
@@ -89,6 +104,7 @@ namespace ItemPickupNotifier.Config
                 Enabled,
                 Anchor,
                 Mode,
+                Background,
                 NotificationDisplayTimeSeconds,
                 InvertedAlignment,
                 HorizontalOffset = GetUnscaledHorizontalOffset(),
@@ -104,12 +120,13 @@ namespace ItemPickupNotifier.Config
 
         public void Load(ICoreClientAPI capi)
         {
-            var loaded = capi.LoadModConfig<ItemPickupNotifierConfig>(FileName);
+            ItemPickupNotifierConfig? loaded = capi.LoadModConfig<ItemPickupNotifierConfig>(FileName);
             if (loaded != null)
             {
                 Enabled = loaded.Enabled;
                 Anchor = loaded.Anchor;
                 Mode = loaded.Mode;
+                Background = loaded.Background;
                 NotificationDisplayTimeSeconds = loaded.NotificationDisplayTimeSeconds;
                 InvertedAlignment = loaded.InvertedAlignment;
                 // The '% 100' is to ensure proper migration of existing configs (avoids settings windows out of bounds elements)
@@ -124,10 +141,11 @@ namespace ItemPickupNotifier.Config
 
         public void ResetToDefaults()
         {
-            var defaults = new ItemPickupNotifierConfig(_capi);
+            ItemPickupNotifierConfig defaults = new ItemPickupNotifierConfig(_capi);
             Enabled = defaults.Enabled;
             Anchor = defaults.Anchor;
             Mode = defaults.Mode;
+            Background = defaults.Background;
             NotificationDisplayTimeSeconds = defaults.NotificationDisplayTimeSeconds;
             InvertedAlignment = defaults.InvertedAlignment;
             HorizontalOffset = defaults._horizontalOffset;

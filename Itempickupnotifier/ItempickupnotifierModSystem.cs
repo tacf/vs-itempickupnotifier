@@ -63,11 +63,10 @@ namespace ItemPickupNotifier
                 .AddSlider("yoffset", OnYOffsetChanged, Config.GetUnscaledVerticalOffset(), minValue: -100)
                 .AddDropdown("pos", OnSelectionChanged, Enum.GetNames(typeof(EnumDialogArea)), defaultName: Config.Anchor.ToString());
             ui.Section("features")
-                .AddSwitch("total-amount-bags", OnTotalAmountToggled, Config.TotalAmountEnabled);
+                .AddSwitch("total-amount-bags", OnTotalAmountToggled, Config.TotalAmountEnabled)
+                .AddDropdown("background", OnBackgroundTypeChanged, Enum.GetNames(typeof(EnumBackgroundMode)), defaultName: Config.Background.ToString());
             ui.Section("dev")
-                //.AddSwitch("overlay-background", OnDevBackgroundToggled)
                 .AddSwitch("preview-mode", OnDevPreviewToggled, persistState: false);
-
             return ui;
         }
 
@@ -87,6 +86,12 @@ namespace ItemPickupNotifier
         private void OnModeChanged(string code, bool selected)
         {
             Config.Mode = code;
+            _NotifierOverlay.RefreshOverlay();
+        }
+        
+        private void OnBackgroundTypeChanged(string code, bool selected)
+        {
+            Config.Background = code;
             _NotifierOverlay.RefreshOverlay();
         }
 
@@ -154,11 +159,6 @@ namespace ItemPickupNotifier
             _NotifierOverlay.Debug(toggle);
         }
 
-        private static void OnDevBackgroundToggled(bool toggle)
-        {
-            _NotifierOverlay.BackgroundVisible(toggle);
-        }
-
         private static void OnSelectionChanged(string code, bool selected)
         {
             if (!selected) return;
@@ -219,7 +219,7 @@ namespace ItemPickupNotifier
 
         private void SlotModified(string invKey, int slotId)
         {
-            var inv = (InventoryBase)_player.InventoryManager.Inventories[invKey];
+            InventoryBase inv = (InventoryBase)_player.InventoryManager.Inventories[invKey];
             var cachedInvStacks = _cachedInventories[invKey];
             if (cachedInvStacks == null || cachedInvStacks.Length != inv.Count)
             {
@@ -228,20 +228,20 @@ namespace ItemPickupNotifier
                 return;
             }
 
-            var currentItemStack = cachedInvStacks[slotId];
-            var newItemStack = inv[slotId].Itemstack;
+            ItemStack currentItemStack = cachedInvStacks[slotId];
+            ItemStack newItemStack = inv[slotId].Itemstack;
 
-            var currentStackSize = currentItemStack?.StackSize ?? 0;
-            var newStackSize = newItemStack?.StackSize ?? 0;
+            int currentStackSize = currentItemStack?.StackSize ?? 0;
+            int newStackSize = newItemStack?.StackSize ?? 0;
 
-            var slotFilled = (newItemStack != null) && (currentItemStack == null);
-            var slotEmptied = !slotFilled;
-            var slotChange = newItemStack != null && currentItemStack != null;
-            var slotNoOp = !slotChange && newStackSize == 0 && currentStackSize == 0;
-            var slotChangedAmmount = slotChange && newItemStack.Id == currentItemStack.Id && newStackSize != currentStackSize;
-            var slotChangedItemType = slotChange && (currentItemStack?.Id != newItemStack?.Id);
-            var isStackSwap = slotChange && slotChangedItemType;
-            var isLastRemovedItem = (slotFilled || slotChangedAmmount || slotChangedItemType) && _lastItemStackRemoved != null && _lastItemStackRemoved.Id == newItemStack.Id && _lastItemStackRemoved.StackSize == newStackSize;
+            bool slotFilled = (newItemStack != null) && (currentItemStack == null);
+            bool slotEmptied = !slotFilled;
+            bool slotChange = newItemStack != null && currentItemStack != null;
+            bool slotNoOp = !slotChange && newStackSize == 0 && currentStackSize == 0;
+            bool slotChangedAmmount = slotChange && newItemStack.Id == currentItemStack.Id && newStackSize != currentStackSize;
+            bool slotChangedItemType = slotChange && (currentItemStack?.Id != newItemStack?.Id);
+            bool isStackSwap = slotChange && slotChangedItemType;
+            bool isLastRemovedItem = (slotFilled || slotChangedAmmount || slotChangedItemType) && _lastItemStackRemoved != null && _lastItemStackRemoved.Id == newItemStack.Id && _lastItemStackRemoved.StackSize == newStackSize;
 
             _cachedInventories[invKey][slotId] = newItemStack?.Clone();
             if (currentStackSize < newStackSize && !isStackSwap && !isLastRemovedItem)
@@ -256,10 +256,11 @@ namespace ItemPickupNotifier
 
         private static void NotifyItemPickup(ItemStack newStack, int currentSize)
         {
-            var notifyStack = newStack.Clone();
+            if (_NotifierOverlay == null || newStack == null) return;
+
+            ItemStack notifyStack = newStack.Clone();
             notifyStack.StackSize -= currentSize;
             _NotifierOverlay.AddItemStack(notifyStack);
-            _NotifierOverlay.ShowNotification();
         }
 
         private static ItemStack[] CopyInventorySlots(InventoryBase inv)
@@ -277,7 +278,7 @@ namespace ItemPickupNotifier
 
         private static bool IsValidInventoryType(IInventory inv)
         {
-            var typeName = inv.GetType().Name;
+            string typeName = inv.GetType().Name;
             return typeName is "InventoryPlayerHotbar" or "InventoryPlayerBackPacks";
         }
 

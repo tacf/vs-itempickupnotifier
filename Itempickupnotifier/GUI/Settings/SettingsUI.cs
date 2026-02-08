@@ -153,6 +153,7 @@ namespace ItemPickupNotifier.GUI
 
         public override bool TryClose()
         {
+            
             SingleComposer.ReCompose();
             return base.TryClose();
         }

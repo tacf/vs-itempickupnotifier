@@ -14,8 +14,9 @@
     "section.position.pos": "Screen Anchor",
     "section.position.xoffset": "X Offset",
     "section.position.yoffset": "Y Offset",
-    "section.features.title": "Features (Standard Mode Only)",
-    "section.features.total-amount-bags": "Show Total Amount in Bags",
+    "section.features.title": "Features",
+    "section.features.total-amount-bags": "Show Total Amount",
+    "section.features.background": "Background Type",
     "section.dev.title": "Developer Settings",
     "section.dev.overlay-background": "Overlay Background",
     "section.dev.preview-mode": "Preview Overlay (Fake Data)"
