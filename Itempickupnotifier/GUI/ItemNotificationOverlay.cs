@@ -40,10 +40,9 @@ namespace ItemPickupNotifier.GUI
         private int _targetStackIndexFromTop;
         private double _itemEntrySize;
         private int _totalEntries;
-        private EnumDialogArea _anchor;
+        private EnumAnchor _anchor;
         private double _xOffset;
         private double _yOffset;
-        private bool _invertedAlignment;
         
         private long _positionChangeStartMs;
         private double _lastStackPositionFromTop;
@@ -51,6 +50,7 @@ namespace ItemPickupNotifier.GUI
         private float _lastAlpha = -1f;
         private float _lastSlide = -1f;
         private float _lastPositionT = -1f;
+        private bool _invertedAlignment => _anchor is EnumAnchor.TopLeft or EnumAnchor.BottomLeft;
 
         public ItemNotificationOverlay(ICoreClientAPI capi, ItemStack stack, CairoFont sharedFont, Vec4f colour)
             : base(capi)
@@ -77,24 +77,20 @@ namespace ItemPickupNotifier.GUI
         public void SetExpireAt(long expireAtMs) => _expireAtMs = expireAtMs;
         public void SetDebugMode(bool debugMode) => _debugMode = debugMode;
 
-        public bool IsExpired(long nowMs)
-        {
-            if (_expireAtMs == -1)
-                return false;
-            return nowMs > _expireAtMs;
-        }
-
         public bool IsFullyFadedOut(long nowMs)
         {
             if (_expireAtMs == -1)
                 return false;
+            
+            // Expire immediately if animations disabled
+            if (nowMs > _expireAtMs && !ItempickupnotifierModSystem.Config.Animations) return true;
+            
             // Fully faded out after expiry + fade duration
             return nowMs > _expireAtMs + FadeOutMs;
         }
 
-        public void UpdateLayout(int stackIndexFromTop, int totalEntries, EnumDialogArea anchor, double xOffset,
-            double yOffset,
-            bool invertedAlignment)
+        public void UpdateLayout(int stackIndexFromTop, int totalEntries, EnumAnchor anchor, double xOffset,
+            double yOffset)
         {
             const double itemEntrySize = 35;
             
@@ -117,14 +113,13 @@ namespace ItemPickupNotifier.GUI
 
             bool layoutChanged = Math.Abs(itemEntrySize - _itemEntrySize) > 0.001 || anchor != _anchor ||
                                  Math.Abs(xOffset - _xOffset) > 0.001 ||
-                                 Math.Abs(yOffset - _yOffset) > 0.001 || invertedAlignment != _invertedAlignment;
+                                 Math.Abs(yOffset - _yOffset) > 0.001;
 
             _itemEntrySize = itemEntrySize;
             _totalEntries = totalEntries;
             _anchor = anchor;
             _xOffset = xOffset;
             _yOffset = yOffset;
-            _invertedAlignment = invertedAlignment;
 
             if (positionChanged || layoutChanged)
                 Rebuild();
@@ -259,7 +254,7 @@ namespace ItemPickupNotifier.GUI
             {
                 float remaining = _expireAtMs - capi.World.ElapsedMilliseconds;
 
-                if (remaining <= 0)
+                if (remaining <= 0 && ItempickupnotifierModSystem.Config.Animations)
                 {
                     // Fading out after expiry
                     float fadeProgress = GameMath.Clamp(-remaining / FadeOutMs, 0f, 1f);
@@ -290,10 +285,9 @@ namespace ItemPickupNotifier.GUI
             _lastAlpha = alpha;
             _lastSlide = slide;
             _lastPositionT = positionT;
-            
             float slideSigned = _invertedAlignment ? -slide : slide;
 
-            (EnumDialogArea dialogBaseAlign, EnumTextOrientation textOrientation) = GetAlignment();
+            (EnumDialogArea dialogBaseAlign, EnumTextOrientation textOrientation, int xSign, int ySign) = GetAlignment();
 
 
             ElementBounds iconBounds = ElementBounds.Fill.WithSizing(ElementSizing.Fixed).WithFixedSize(35, 0)
@@ -324,9 +318,9 @@ namespace ItemPickupNotifier.GUI
                 .WithFixedPadding(2, 2);
             
             ElementBounds dialogBounds =
-                ElementBounds.Fill.WithAlignment(_anchor)
+                ElementBounds.Fill.WithAlignment(ItemPickupNotifierConfig.AnchorToPosition(_anchor))
                     .WithSizing(ElementSizing.FitToChildren)
-                    .WithFixedOffset(_xOffset + slideSigned, _yOffset - (_stackPositionFromTop * _itemEntrySize))
+                    .WithFixedOffset(_xOffset*xSign + slideSigned, _yOffset*ySign + ySign*(_stackPositionFromTop * _itemEntrySize))
                     .WithChildren(bgBounds);
 
             string composerKey = "itemPickupNotifierItem-" + ItemId;
@@ -353,12 +347,15 @@ namespace ItemPickupNotifier.GUI
         }
 
 
-        private (EnumDialogArea dialogBaseAlign, EnumTextOrientation textOrientation) GetAlignment()
+        private (EnumDialogArea dialogBaseAlign, EnumTextOrientation textOrientation, int xSign, int ySign) GetAlignment()
         {
+            int hSign = (_anchor is EnumAnchor.BottomRight or EnumAnchor.TopRight) ? -1 : 1;
+            int vSign = (_anchor is EnumAnchor.BottomLeft or EnumAnchor.BottomRight) ? -1 : 1;
+            
             if (_invertedAlignment)
-                return (EnumDialogArea.RightTop, EnumTextOrientation.Left);
+                return (EnumDialogArea.RightTop, EnumTextOrientation.Left, hSign, vSign);
 
-            return (EnumDialogArea.LeftTop, EnumTextOrientation.Right);
+            return (EnumDialogArea.LeftTop, EnumTextOrientation.Right, hSign, vSign);
         }
 
         private string BuildDisplayLine()

@@ -8,51 +8,29 @@ using System.Linq;
 
 namespace ItemPickupNotifier.GUI
 {
-
     public class NotifierOverlay : HudElement
     {
         // Prevent conficts with UIs and allow click through
         public override double DrawOrder => 0.06;
         public override bool ShouldReceiveMouseEvents() => false;
-
         public int DisplayTime = ItempickupnotifierModSystem.Config.NotificationDisplayTimeSeconds;
-
         private CairoFont _font;
         private readonly Vec4f _colour = new(0.91f, 0.87f, 0.81f, 1);
         private readonly float _backgroundPreviewAlpha = 0.6f;
         private bool _debugModeEnabled;
         private bool _enabled = true;
         private double _windowSizeDetector;
-
+        private double _winWidth;
+        private double _winHeight;
         private readonly LinkedList<ItemNotificationOverlay> _entries = new();
-
-
 
         public NotifierOverlay(ICoreClientAPI capi) : base(capi)
         {
             _font = InitFont();
             _enabled = ItempickupnotifierModSystem.Config.Enabled;
             capi.Event.RegisterGameTickListener(ExpireEntries, 200);
-            CheckWindowResize();
         }
 
-        public override void OnRenderGUI(float deltaTime)
-        {
-            base.OnRenderGUI(deltaTime);
-
-            if (!IsEnabled())
-            {
-                CloseAllEntries();
-                return;
-            }
-
-            if (CheckWindowResize())
-            {
-                RefreshUIElements();
-            }
-
-            ExpireEntries(0);
-        }
 
         public void AddItemStack(ItemStack itemStack)
         {
@@ -69,9 +47,7 @@ namespace ItemPickupNotifier.GUI
 
             ItemNotificationOverlay overlay = CreateEntryOverlay(itemStack.Clone());
             overlay.SetExpireAt(GetExpireAtMs());
-
             if (!overlay.TryOpen(withFocus: false)) return;
-            
             _entries.AddFirst(overlay);
             RefreshUIElements();
         }
@@ -85,7 +61,6 @@ namespace ItemPickupNotifier.GUI
             }
 
             UpdateFontFromConfig();
-
             foreach (ItemNotificationOverlay entry in _entries)
             {
                 entry.SyncFont(_font);
@@ -108,7 +83,6 @@ namespace ItemPickupNotifier.GUI
         public void Debug(bool enabled)
         {
             _debugModeEnabled = enabled;
-
             if (_debugModeEnabled)
             {
                 GenerateFakeData();
@@ -122,31 +96,28 @@ namespace ItemPickupNotifier.GUI
                     entry.SetDebugMode(false);
                     entry.SetExpireAt(expiry);
                 }
+
                 RefreshUIElements();
             }
         }
-        
+
         private long GetExpireAtMs()
         {
-            return _debugModeEnabled
-                ? -1
-                : capi.World.ElapsedMilliseconds + (long)(DisplayTime * 1000);
+            return _debugModeEnabled ? -1 : capi.World.ElapsedMilliseconds + (long)(DisplayTime * 1000);
         }
 
         private void ExpireEntries(float dt)
         {
             long nowMs = capi.World.ElapsedMilliseconds;
-            
             var toRemove = _entries.Where(entry => entry.IsFullyFadedOut(nowMs)).ToList();
-
             if (toRemove.Count <= 0) return;
-            
             foreach (ItemNotificationOverlay entry in toRemove)
             {
                 entry.TryClose();
                 entry.Dispose();
                 _entries.Remove(entry);
             }
+
             RefreshUIElements();
         }
 
@@ -155,14 +126,9 @@ namespace ItemPickupNotifier.GUI
             int i = 0;
             foreach (ItemNotificationOverlay entry in _entries)
             {
-                entry.UpdateLayout(
-                    i,
-                    _entries.Count,
-                    ItempickupnotifierModSystem.Config.GetOverlayAnchor(),
+                entry.UpdateLayout(i, _entries.Count, ItempickupnotifierModSystem.Config.GetOverlayAnchor(),
                     ItempickupnotifierModSystem.Config.HorizontalOffset,
-                    ItempickupnotifierModSystem.Config.VerticalOffset,
-                    ItempickupnotifierModSystem.Config.InvertedAlignment
-                );
+                    ItempickupnotifierModSystem.Config.VerticalOffset);
                 i++;
             }
         }
@@ -195,21 +161,17 @@ namespace ItemPickupNotifier.GUI
 
         private CairoFont InitFont()
         {
-            return new CairoFont()
-                .WithColor(new double[] { _colour.R, _colour.G, _colour.B, _colour.A })
-                .WithFont(GuiStyle.StandardFontName)
-                .WithOrientation(EnumTextOrientation.Right)
+            return new CairoFont().WithColor(new double[] { _colour.R, _colour.G, _colour.B, _colour.A })
+                .WithFont(GuiStyle.StandardFontName).WithOrientation(EnumTextOrientation.Right)
                 .WithFontSize(ItempickupnotifierModSystem.Config.FontSize)
                 .WithWeight(ItempickupnotifierModSystem.Config.FontBold
                     ? Cairo.FontWeight.Bold
-                    : Cairo.FontWeight.Normal)
-                .WithStroke(new double[] { 0, 0, 0, 0.5 }, 2);
+                    : Cairo.FontWeight.Normal).WithStroke(new double[] { 0, 0, 0, 0.5 }, 2);
         }
 
         private void GenerateFakeData()
         {
             CloseAllEntries();
-
             var fakeStacks = new[]
             {
                 new ItemStack(992, EnumItemClass.Item, 1, new TreeAttribute(), capi.World),
@@ -220,7 +182,6 @@ namespace ItemPickupNotifier.GUI
                 new ItemStack(294, EnumItemClass.Block, 54, new TreeAttribute(), capi.World),
                 new ItemStack(263, EnumItemClass.Block, 7, new TreeAttribute(), capi.World),
             };
-
             foreach (ItemStack stack in fakeStacks)
             {
                 ItemNotificationOverlay overlay = CreateEntryOverlay(stack);
@@ -228,9 +189,8 @@ namespace ItemPickupNotifier.GUI
                 overlay.SetExpireAt(-1);
                 _entries.AddLast(overlay);
             }
-            
+
             RefreshUIElements();
-            
             foreach (ItemNotificationOverlay entry in _entries)
             {
                 entry.TryOpen(withFocus: false);

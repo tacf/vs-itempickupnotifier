@@ -58,16 +58,21 @@ namespace ItemPickupNotifier
                 .AddSlider("size", OnFontSizeChanged, Config.GetUnscaledFontSize(), minValue: 5, maxValue: 20)
                 .AddSwitch("bold", OnBoldToggled, Config.FontBold);
             ui.Section("position")
-                .AddSwitch("invertalignment", OnAlignmentChanged, Config.InvertedAlignment)
-                .AddSlider("xoffset", OnXOffsetChanged, Config.GetUnscaledHorizontalOffset(), minValue: -100)
-                .AddSlider("yoffset", OnYOffsetChanged, Config.GetUnscaledVerticalOffset(), minValue: -100)
-                .AddDropdown("pos", OnSelectionChanged, Enum.GetNames(typeof(EnumDialogArea)), defaultName: Config.Anchor.ToString());
+                .AddSlider("xoffset", OnXOffsetChanged, Config.GetUnscaledHorizontalOffset())
+                .AddSlider("yoffset", OnYOffsetChanged, Config.GetUnscaledVerticalOffset())
+                .AddDropdown("pos", OnSelectionChanged, Enum.GetNames(typeof(EnumAnchor)), defaultName: Config.Anchor.ToString());
             ui.Section("features")
                 .AddSwitch("total-amount-bags", OnTotalAmountToggled, Config.TotalAmountEnabled)
+                .AddSwitch("animations", OnAnimationToggled, Config.Animations)
                 .AddDropdown("background", OnBackgroundTypeChanged, Enum.GetNames(typeof(EnumBackgroundMode)), defaultName: Config.Background.ToString());
             ui.Section("dev")
                 .AddSwitch("preview-mode", OnDevPreviewToggled, persistState: false);
             return ui;
+        }
+
+        private void OnAnimationToggled(bool toggled)
+        {
+            Config.Animations = toggled;
         }
 
         private bool OnDisplayTimeChanged(int displayTime)
@@ -75,12 +80,6 @@ namespace ItemPickupNotifier
             Config.NotificationDisplayTimeSeconds = displayTime;
             _NotifierOverlay.DisplayTime = displayTime;
             return true;
-        }
-
-        private void OnAlignmentChanged(bool toggled)
-        {
-            Config.InvertedAlignment = toggled;
-            _NotifierOverlay.RefreshOverlay();
         }
 
         private void OnModeChanged(string code, bool selected)

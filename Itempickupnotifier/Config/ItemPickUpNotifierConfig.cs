@@ -1,9 +1,6 @@
 #nullable enable
 using System;
-using Cairo;
 using Vintagestory.API.Client;
-using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 
 namespace ItemPickupNotifier.Config
 {
@@ -19,6 +16,14 @@ namespace ItemPickupNotifier.Config
         None,
         Simple,
         Native,
+    }
+    
+    public enum EnumAnchor
+    {
+        TopLeft,
+        BottomLeft,
+        TopRight,
+        BottomRight,
     }
     
     /// <summary>
@@ -51,7 +56,7 @@ namespace ItemPickupNotifier.Config
         public string Anchor
         {
             get => _anchor.ToString();
-            set => _anchor = Enum.TryParse<EnumDialogArea>(value, out EnumDialogArea result) ? result : EnumDialogArea.RightBottom;
+            set => _anchor = Enum.TryParse<EnumAnchor>(value, out EnumAnchor result) ? result : EnumAnchor.BottomRight;
         }
 
         /// <summary>Horizontal offset (in pixels)</summary>
@@ -77,10 +82,10 @@ namespace ItemPickupNotifier.Config
         public bool FontBold = true;
         public bool TotalAmountEnabled = false;
         public bool Enabled = true;
-        public bool InvertedAlignment = false;
+        public bool Animations = true;
         public int NotificationDisplayTimeSeconds = 4;
 
-        private EnumDialogArea _anchor = EnumDialogArea.RightBottom;
+        private EnumAnchor _anchor = EnumAnchor.BottomRight;
         private EnumNotifierMode _mode = EnumNotifierMode.Standard;
         private EnumBackgroundMode _backgroundMode = EnumBackgroundMode.None;
         private float _fontSize = 16.0f;
@@ -92,7 +97,7 @@ namespace ItemPickupNotifier.Config
             _capi = capi;
         }
 
-        public EnumDialogArea GetOverlayAnchor()
+        public EnumAnchor GetOverlayAnchor()
         {
             return _anchor;
         }
@@ -105,8 +110,8 @@ namespace ItemPickupNotifier.Config
                 Anchor,
                 Mode,
                 Background,
+                Animations,
                 NotificationDisplayTimeSeconds,
-                InvertedAlignment,
                 HorizontalOffset = GetUnscaledHorizontalOffset(),
                 VerticalOffset = GetUnscaledVerticalOffset(),
                 FontSize = GetUnscaledFontSize(),
@@ -127,8 +132,8 @@ namespace ItemPickupNotifier.Config
                 Anchor = loaded.Anchor;
                 Mode = loaded.Mode;
                 Background = loaded.Background;
+                Animations = loaded.Animations;
                 NotificationDisplayTimeSeconds = loaded.NotificationDisplayTimeSeconds;
-                InvertedAlignment = loaded.InvertedAlignment;
                 // The '% 100' is to ensure proper migration of existing configs (avoids settings windows out of bounds elements)
                 HorizontalOffset = loaded._horizontalOffset % 100;
                 VerticalOffset = loaded._verticalOffset % 100;
@@ -146,8 +151,8 @@ namespace ItemPickupNotifier.Config
             Anchor = defaults.Anchor;
             Mode = defaults.Mode;
             Background = defaults.Background;
+            Animations = defaults.Animations;
             NotificationDisplayTimeSeconds = defaults.NotificationDisplayTimeSeconds;
-            InvertedAlignment = defaults.InvertedAlignment;
             HorizontalOffset = defaults._horizontalOffset;
             VerticalOffset = defaults._verticalOffset;
             FontSize = defaults._fontSize;
@@ -174,6 +179,18 @@ namespace ItemPickupNotifier.Config
         public int GetUnscaledFontSize()
         {
             return (int)_fontSize;
+        }
+
+        public static EnumDialogArea AnchorToPosition(EnumAnchor anchor)
+        {
+            return anchor switch
+            {
+                EnumAnchor.TopLeft => EnumDialogArea.LeftTop,
+                EnumAnchor.BottomLeft => EnumDialogArea.LeftBottom,
+                EnumAnchor.TopRight => EnumDialogArea.RightTop,
+                EnumAnchor.BottomRight => EnumDialogArea.RightBottom,
+                _ => throw new ArgumentOutOfRangeException(nameof(anchor), anchor, null)
+            };
         }
     }
 }

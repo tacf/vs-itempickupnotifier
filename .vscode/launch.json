@@ -17,11 +17,13 @@
             },
             "preLaunchTask": "build",
             "args": [
-                "--playStyle" , "preset-surviveandbuild",
-                "--openWorld" , "Dev Survival Mod",
+                "--playStyle",
+                "preset-surviveandbuild",
+                "--openWorld",
+                "Dev Survival Mod",
                 "--tracelog",
                 "--addModPath",
-                "${workspaceFolder}/itempickupnotifier/bin/Debug/Mods",
+                "${workspaceFolder}/Itempickupnotifier/bin/Debug/Mods",
             ],
             "console": "internalConsole",
             "stopAtEntry": false
@@ -41,7 +43,7 @@
             "args": [
                 "--tracelog",
                 "--addModPath",
-                "${workspaceFolder}/itempickupnotifier/bin/Debug/Mods",
+                "${workspaceFolder}/Itempickupnotifier/bin/Debug/Mods",
             ],
             "console": "internalConsole",
             "stopAtEntry": false

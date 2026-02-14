@@ -9,7 +9,7 @@
                 "build",
                 "-c",
                 "Debug",
-                "${workspaceFolder}/itempickupnotifier/itempickupnotifier.csproj"
+                "${workspaceFolder}/Itempickupnotifier/Itempickupnotifier.csproj"
             ],
             "problemMatcher": "$msCompile"
         },
