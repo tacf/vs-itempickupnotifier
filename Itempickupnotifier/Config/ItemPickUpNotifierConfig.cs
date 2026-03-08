@@ -75,7 +75,7 @@ namespace ItemPickupNotifier.Config
 
         public float FontSize
         {
-            get => (float)ElementBounds.scaled(_fontSize);
+            get => _fontSize;
             set => _fontSize = value;
         }
 
@@ -137,8 +137,8 @@ namespace ItemPickupNotifier.Config
                 // The '% 100' is to ensure proper migration of existing configs (avoids settings windows out of bounds elements)
                 HorizontalOffset = loaded._horizontalOffset % 100;
                 VerticalOffset = loaded._verticalOffset % 100;
-                // Ensure Proper migration of old configs (avoids settings windows out of bounds elements)
-                FontSize = Math.Max(loaded._fontSize % MaxFontSize, MinFontSize);
+                // Clamp directly so max value (20) does not wrap to 0 on reload.
+                FontSize = Math.Clamp(loaded._fontSize, MinFontSize, MaxFontSize);
                 FontBold = loaded.FontBold;
                 TotalAmountEnabled = loaded.TotalAmountEnabled;
             }

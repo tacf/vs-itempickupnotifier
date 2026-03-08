@@ -7,8 +7,8 @@
     ],
     "side": "client",
     "description": "Small hud overlay that shows pickup items",
-    "version": "2.1.0",
+    "version": "2.2.0",
     "dependencies": {
-        "game": "1.20.0"
+        "game": "1.22.0-pre.1"
     }
 }

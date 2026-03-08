@@ -39,7 +39,9 @@ namespace ItemPickupNotifier.GUI
         private double _stackPositionFromTop;
         private int _targetStackIndexFromTop;
         private double _itemEntrySize;
+        private double _measuredRowHeightUnscaled;
         private int _totalEntries;
+        private EnumNotifierMode _mode;
         private EnumAnchor _anchor;
         private double _xOffset;
         private double _yOffset;
@@ -90,9 +92,11 @@ namespace ItemPickupNotifier.GUI
         }
 
         public void UpdateLayout(int stackIndexFromTop, int totalEntries, EnumAnchor anchor, double xOffset,
-            double yOffset)
+            double yOffset, double sharedItemEntrySize)
         {
-            const double itemEntrySize = 35;
+            EnumNotifierMode mode = Enum.Parse<EnumNotifierMode>(ItempickupnotifierModSystem.Config.Mode);
+            double fallbackItemEntrySize = GetEntrySpacingUnscaled(mode);
+            double itemEntrySize = sharedItemEntrySize > 0 ? sharedItemEntrySize : fallbackItemEntrySize;
             
             if (_positionChangeStartMs == 0)
             {
@@ -111,18 +115,32 @@ namespace ItemPickupNotifier.GUI
                 _positionChangeStartMs = capi.World.ElapsedMilliseconds;
             }
 
-            bool layoutChanged = Math.Abs(itemEntrySize - _itemEntrySize) > 0.001 || anchor != _anchor ||
+            bool layoutChanged = Math.Abs(itemEntrySize - _itemEntrySize) > 0.001 || anchor != _anchor || mode != _mode ||
                                  Math.Abs(xOffset - _xOffset) > 0.001 ||
                                  Math.Abs(yOffset - _yOffset) > 0.001;
 
             _itemEntrySize = itemEntrySize;
             _totalEntries = totalEntries;
+            _mode = mode;
             _anchor = anchor;
             _xOffset = xOffset;
             _yOffset = yOffset;
 
             if (positionChanged || layoutChanged)
                 Rebuild();
+        }
+
+        public double GetPreferredEntrySpacingUnscaled()
+        {
+            EnumNotifierMode mode = Enum.Parse<EnumNotifierMode>(ItempickupnotifierModSystem.Config.Mode);
+            double fallbackSpacing = GetEntrySpacingUnscaled(mode);
+            if (_measuredRowHeightUnscaled > 0)
+            {
+                double measuredWithGap = _measuredRowHeightUnscaled + GetMinimumGapUnscaled(mode);
+                return Math.Max(fallbackSpacing, measuredWithGap);
+            }
+
+            return fallbackSpacing;
         }
 
 
@@ -191,9 +209,13 @@ namespace ItemPickupNotifier.GUI
             _lastAlpha = alpha;
             
             
-            ElementBounds iconBounds = ElementBounds.Fill.WithSizing(ElementSizing.Fixed).WithFixedSize(40, 40)
+            double iconSize = GetIconSizeUnscaled(EnumNotifierMode.IconsOnly);
+            double spacing = _itemEntrySize > 0 ? _itemEntrySize : GetEntrySpacingUnscaled(EnumNotifierMode.IconsOnly);
+            double itemStackSizeUnscaled = GetItemStackComponentSizeUnscaled(iconSize);
+            
+            ElementBounds iconBounds = ElementBounds.Fill.WithSizing(ElementSizing.Fixed).WithFixedSize(iconSize, iconSize)
                 .WithAlignment(EnumDialogArea.CenterFixed).WithFixedPadding(5,5);
-            ElementBounds textBounds = ElementBounds.Fill.WithSizing(ElementSizing.Fixed).WithFixedSize(60, 60)
+            ElementBounds textBounds = ElementBounds.Fill.WithSizing(ElementSizing.Fixed).WithFixedSize(iconSize * 1.5, iconSize * 1.5)
                 .WithAlignment(EnumDialogArea.RightBottom).WithFixedPadding(2,0);
 
             string text = _stack.StackSize.ToString();
@@ -202,7 +224,7 @@ namespace ItemPickupNotifier.GUI
             _font.WithColor(new double[] { _colour.R, _colour.G, _colour.B, _colour.A * alpha });
             _font.WithStroke(new double[] { 0, 0, 0, 0.3 * alpha }, 2); // Apply alpha to stroke (reduced opacity)
 
-            ItemstackTextComponent isComp = new(capi, _stack, 50);
+            ItemstackTextComponent isComp = new(capi, _stack, itemStackSizeUnscaled);
 
             ElementBounds bgBounds = ElementBounds.Fill.WithSizing(ElementSizing.FitToChildren)
                 .WithChildren(iconBounds, textBounds);
@@ -210,7 +232,7 @@ namespace ItemPickupNotifier.GUI
             ElementBounds dialogBounds =
                 ElementBounds.Fill.WithAlignment(EnumDialogArea.CenterBottom)
                     .WithSizing(ElementSizing.FitToChildren)
-                    .WithFixedOffset((_targetStackIndexFromTop * 70) - _totalEntries * 70 / 2, -130)
+                    .WithFixedOffset((_targetStackIndexFromTop * spacing) - _totalEntries * spacing / 2, -130)
                     .WithChildren(bgBounds);
 
             string composerKey = "itemPickupNotifierItem-" + ItemId;
@@ -234,6 +256,7 @@ namespace ItemPickupNotifier.GUI
             guiComposer.EndChildElements();
 
             SingleComposer = guiComposer.Compose();
+            _measuredRowHeightUnscaled = GetUnscaledHeight(SingleComposer.Bounds.OuterHeight);
         }
 
         private void RebuildStandardMode(bool forceRebuild)
@@ -289,8 +312,10 @@ namespace ItemPickupNotifier.GUI
 
             (EnumDialogArea dialogBaseAlign, EnumTextOrientation textOrientation, int xSign, int ySign) = GetAlignment();
 
+            double iconSize = GetIconSizeUnscaled(EnumNotifierMode.Standard);
+            double itemStackSizeUnscaled = GetItemStackComponentSizeUnscaled(iconSize);
 
-            ElementBounds iconBounds = ElementBounds.Fill.WithSizing(ElementSizing.Fixed).WithFixedSize(35, 0)
+            ElementBounds iconBounds = ElementBounds.Fill.WithSizing(ElementSizing.Fixed).WithFixedSize(iconSize, iconSize)
                 .WithFixedOffset(0, -2); 
             ElementBounds textBounds = ElementBounds.Fill.WithSizing(ElementSizing.Fixed)
                 .WithFixedPadding(2, 0);
@@ -310,7 +335,7 @@ namespace ItemPickupNotifier.GUI
             _font.WithStroke(new double[] { 0, 0, 0, 0.3 * alpha }, 2); // Apply alpha to stroke (reduced opacity)
             _font.AutoBoxSize(text, textBounds);
 
-            ItemstackTextComponent isComp = new(capi, _stack, 30);
+            ItemstackTextComponent isComp = new(capi, _stack, itemStackSizeUnscaled);
 
             ElementBounds bgBounds = ElementBounds.Fill.WithSizing(ElementSizing.FitToChildren)
                 .WithAlignment(dialogBaseAlign)
@@ -344,6 +369,7 @@ namespace ItemPickupNotifier.GUI
             guiComposer.EndChildElements();
 
             SingleComposer = guiComposer.Compose();
+            _measuredRowHeightUnscaled = GetUnscaledHeight(SingleComposer.Bounds.OuterHeight);
         }
 
 
@@ -373,6 +399,69 @@ namespace ItemPickupNotifier.GUI
 
             string raw = _stack.StackSize + "x " + _stack.GetName() + totalCount;
             return Regex.Replace(raw, "<.*?>", string.Empty);
+        }
+
+        private static double GetIconSizeUnscaled(EnumNotifierMode mode)
+        {
+            double uiScale = GetUiScale();
+            double fontPx = ItempickupnotifierModSystem.Config.GetUnscaledFontSize() * uiScale;
+            double multiplier = mode == EnumNotifierMode.Standard ? 1.9 : 2.2;
+            double iconScaleFactor = GetIconScaleFactor(uiScale);
+            double iconPx = Math.Clamp(
+                fontPx * multiplier * iconScaleFactor,
+                14d * uiScale * iconScaleFactor,
+                96d * uiScale * iconScaleFactor
+            );
+            return iconPx / uiScale;
+        }
+
+        private static double GetEntrySpacingUnscaled(EnumNotifierMode mode)
+        {
+            double uiScale = GetUiScale();
+            double fontPx = ItempickupnotifierModSystem.Config.GetUnscaledFontSize() * uiScale;
+            double iconPx = GetIconSizeUnscaled(mode) * uiScale;
+            double contentPx = mode == EnumNotifierMode.IconsOnly
+                ? Math.Max(iconPx * 1.55, fontPx * 1.25)
+                : Math.Max(iconPx + (2d * uiScale), fontPx * 1.45);
+            double verticalGapPx = mode == EnumNotifierMode.IconsOnly
+                ? Math.Max(8d * uiScale, contentPx * 0.18)
+                : Math.Max(6d * uiScale, contentPx * 0.12);
+            return (contentPx + verticalGapPx) / uiScale;
+        }
+
+        private static double GetItemStackComponentSizeUnscaled(double iconSizeUnscaled)
+        {
+            return Math.Max(1d, iconSizeUnscaled * 0.9d);
+        }
+
+        private static double GetUiScale()
+        {
+            return Math.Max(0.01d, ElementBounds.scaled(1.0));
+        }
+
+        private static double GetIconScaleFactor(double uiScale)
+        {
+            const double lowUiScale = 0.7;
+            const double highUiScale = 1.7;
+            const double lowReduction = 0.07;  // 7% smaller at low scales
+            const double highReduction = 0.30; // 30% smaller at high scales
+
+            double t = Math.Clamp((uiScale - lowUiScale) / (highUiScale - lowUiScale), 0d, 1d);
+            double reduction = lowReduction + (highReduction - lowReduction) * t;
+            return 1d - reduction;
+        }
+
+        private static double GetMinimumGapUnscaled(EnumNotifierMode mode)
+        {
+            double uiScale = GetUiScale();
+            double gapPx = mode == EnumNotifierMode.IconsOnly ? 8d * uiScale : 6d * uiScale;
+            return gapPx / uiScale;
+        }
+
+        private static double GetUnscaledHeight(double scaledHeight)
+        {
+            double uiScale = GetUiScale();
+            return scaledHeight / uiScale;
         }
     }
 }

@@ -22,6 +22,7 @@ namespace ItemPickupNotifier.GUI
         private double _windowSizeDetector;
         private double _winWidth;
         private double _winHeight;
+        private double _uiScaleDetector;
         private readonly LinkedList<ItemNotificationOverlay> _entries = new();
 
         public NotifierOverlay(ICoreClientAPI capi) : base(capi)
@@ -35,6 +36,7 @@ namespace ItemPickupNotifier.GUI
         public void AddItemStack(ItemStack itemStack)
         {
             if (itemStack == null || !IsEnabled()) return;
+            UpdateFontFromConfig();
 
             // Merge with existing overlay for the same item id
             ItemNotificationOverlay existing = _entries.FirstOrDefault(e => e.ItemId == itemStack.Id);
@@ -123,12 +125,33 @@ namespace ItemPickupNotifier.GUI
 
         private void RefreshUIElements()
         {
+            double sharedEntrySpacing = GetSharedEntrySpacingUnscaled();
+            ApplyLayout(sharedEntrySpacing);
+
+            // Second pass: after first compose, overlays can report measured row height.
+            double measuredSpacing = GetSharedEntrySpacingUnscaled();
+            if (Math.Abs(measuredSpacing - sharedEntrySpacing) > 0.01)
+            {
+                ApplyLayout(measuredSpacing);
+            }
+        }
+
+        private double GetSharedEntrySpacingUnscaled()
+        {
+            return _entries.Count > 0
+                ? _entries.Max(entry => entry.GetPreferredEntrySpacingUnscaled())
+                : 0;
+        }
+
+        private void ApplyLayout(double sharedEntrySpacing)
+        {
             int i = 0;
             foreach (ItemNotificationOverlay entry in _entries)
             {
                 entry.UpdateLayout(i, _entries.Count, ItempickupnotifierModSystem.Config.GetOverlayAnchor(),
                     ItempickupnotifierModSystem.Config.HorizontalOffset,
-                    ItempickupnotifierModSystem.Config.VerticalOffset);
+                    ItempickupnotifierModSystem.Config.VerticalOffset,
+                    sharedEntrySpacing);
                 i++;
             }
         }
@@ -199,14 +222,34 @@ namespace ItemPickupNotifier.GUI
 
         private bool CheckWindowResize()
         {
-            double winDim = (capi?.Gui.WindowBounds.absX ?? 0) + (capi?.Gui.WindowBounds.absY ?? 0);
-            if (Math.Abs(winDim - _windowSizeDetector) > 0.001)
+            double innerWidth = capi?.Gui.WindowBounds.InnerWidth ?? 0;
+            double innerHeight = capi?.Gui.WindowBounds.InnerHeight ?? 0;
+            double uiScale = ElementBounds.scaled(1.0);
+            double winDim = innerWidth + innerHeight;
+            bool changed = Math.Abs(winDim - _windowSizeDetector) > 0.001 ||
+                           Math.Abs(innerWidth - _winWidth) > 0.001 ||
+                           Math.Abs(innerHeight - _winHeight) > 0.001 ||
+                           Math.Abs(uiScale - _uiScaleDetector) > 0.0001;
+            if (changed)
             {
                 _windowSizeDetector = winDim;
+                _winWidth = innerWidth;
+                _winHeight = innerHeight;
+                _uiScaleDetector = uiScale;
                 return true;
             }
 
             return false;
+        }
+
+        public override void OnRenderGUI(float deltaTime)
+        {
+            if (CheckWindowResize())
+            {
+                RefreshOverlay();
+            }
+
+            base.OnRenderGUI(deltaTime);
         }
     }
 }

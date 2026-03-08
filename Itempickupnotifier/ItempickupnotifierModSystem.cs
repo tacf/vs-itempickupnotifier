@@ -174,7 +174,7 @@ namespace ItemPickupNotifier
 
         private void RegisterHotKeys()
         {
-            _capi.Input.RegisterHotKey("itempickupnotifier:config", "Item Pickup Notifier Config", GlKeys.Z, type: HotkeyType.GUIOrOtherControls, ctrlPressed: true);
+            _capi.Input.RegisterHotKey("itempickupnotifier:config", UITils.GetLangString("itempickupnotifier", "hotkey.config"), GlKeys.Z, type: HotkeyType.GUIOrOtherControls, ctrlPressed: true);
             _capi.Input.SetHotKeyHandler("itempickupnotifier:config", OnConfigHotKeyPressed);
         }
 
@@ -278,7 +278,10 @@ namespace ItemPickupNotifier
         private static bool IsValidInventoryType(IInventory inv)
         {
             string typeName = inv.GetType().Name;
-            return typeName is "InventoryPlayerHotbar" or "InventoryPlayerBackPacks";
+            return typeName is "InventoryPlayerHotbar"
+                // VS 1.22 renamed InventoryPlayerBackPacks -> InventoryPlayerBackpacks.
+                or "InventoryPlayerBackPacks"
+                or "InventoryPlayerBackpacks";
         }
 
         public static int GetTotalItemCountInInventories(int itemCode)

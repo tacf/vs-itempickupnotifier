@@ -2,6 +2,7 @@
     "global.settings-title": "Item Pickup Notifier Settings",
     "global.save": "Save & Close",
     "global.cancel": "Cancel",
+    "hotkey.config": "Open Item Pickup Notifier Settings",
     "section.global.title": "Global Settings",
     "section.global.enabled": "Enabled",
     "section.global.mode": "Display Mode",
